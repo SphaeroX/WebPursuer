@@ -20,5 +20,6 @@ data class CheckLog(
     val monitorId: Int,
     val timestamp: Long,
     val result: String, // "SUCCESS", "FAILURE", "CHANGED", "UNCHANGED"
-    val message: String
+    val message: String,
+    val content: String? = null
 )

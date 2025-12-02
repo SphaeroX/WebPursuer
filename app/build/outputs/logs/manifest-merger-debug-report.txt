@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-29:12
-INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-29:12
-INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-29:12
-INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-29:12
+ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-30:12
+INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-30:12
+INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-30:12
+INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:2:1-30:12
 MERGED from [androidx.databinding:viewbinding:8.2.0] C:\Users\MGasc\.gradle\caches\8.11.1\transforms\6a1e3a9b0007e458bdad5651b363010c\transformed\jetified-viewbinding-8.2.0\AndroidManifest.xml:2:1-7:12
 MERGED from [com.google.android.material:material:1.11.0] C:\Users\MGasc\.gradle\caches\8.11.1\transforms\0ee8edd674f5ab58843f869a994cccb0\transformed\material-1.11.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\MGasc\.gradle\caches\8.11.1\transforms\ca82ef3e946238156f6a863a9f34c873\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
@@ -107,8 +107,8 @@ ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:7:5-77
 	android:name
 		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:7:22-74
 application
-ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:9:5-27:19
-INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:9:5-27:19
+ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:9:5-28:19
+INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:9:5-28:19
 MERGED from [com.google.android.material:material:1.11.0] C:\Users\MGasc\.gradle\caches\8.11.1\transforms\0ee8edd674f5ab58843f869a994cccb0\transformed\material-1.11.0\AndroidManifest.xml:22:5-20
 MERGED from [com.google.android.material:material:1.11.0] C:\Users\MGasc\.gradle\caches\8.11.1\transforms\0ee8edd674f5ab58843f869a994cccb0\transformed\material-1.11.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\MGasc\.gradle\caches\8.11.1\transforms\ca82ef3e946238156f6a863a9f34c873\transformed\constraintlayout-2.1.4\AndroidManifest.xml:9:5-20
@@ -138,37 +138,39 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\MGasc\.gradle\cach
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] C:\Users\MGasc\.gradle\caches\8.11.1\transforms\9ec7317af9759f35ba8d0ede92c12672\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:12:9-35
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:13:9-35
 	android:label
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:11:9-41
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:12:9-41
 	tools:targetApi
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:14:9-29
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:15:9-29
 	android:allowBackup
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:10:9-35
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:11:9-35
 	android:theme
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:13:9-48
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:14:9-48
+	android:name
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:10:9-38
 activity#com.example.webpursuer.MainActivity
-ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:15:9-23:20
+ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:16:9-24:20
 	android:exported
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:17:13-36
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:18:13-36
 	android:name
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:16:13-41
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:17:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:18:13-22:29
+ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:19:13-23:29
 action#android.intent.action.MAIN
-ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:19:17-69
+ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:20:17-69
 	android:name
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:19:25-66
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:20:25-66
 category#android.intent.category.LAUNCHER
-ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:21:17-77
+ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:22:17-77
 	android:name
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:21:27-74
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:22:27-74
 activity#com.example.webpursuer.ui.BrowserActivity
-ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:24:9-26:40
+ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:25:9-27:40
 	android:exported
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:26:13-37
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:27:13-37
 	android:name
-		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:25:13-47
+		ADDED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml:26:13-47
 uses-sdk
 INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from C:\Users\MGasc\WebPursuer\app\src\main\AndroidManifest.xml

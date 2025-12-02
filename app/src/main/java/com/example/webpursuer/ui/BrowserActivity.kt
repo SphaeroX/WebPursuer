@@ -47,8 +47,8 @@ class BrowserActivity : ComponentActivity() {
     @Composable
     fun BrowserScreen() {
         var url by remember { mutableStateOf("https://google.com") }
-        var isRecording by remember { mutableStateOf(false) }
-        var isSelecting by remember { mutableStateOf(false) }
+        // isRecording removed
+        val isSelecting by browserViewModel.isSelecting.collectAsState()
         var monitorName by remember { mutableStateOf("") }
         
         val selectedSelector by browserViewModel.selectedSelector.collectAsState()
@@ -74,7 +74,7 @@ class BrowserActivity : ComponentActivity() {
                 onDismissRequest = { 
                     showSaveDialog = false 
                     browserViewModel.clearSelection()
-                    isSelecting = false 
+                    browserViewModel.setSelectionMode(false)
                 },
                 title = { Text("Save Monitor") },
                 text = {
@@ -97,11 +97,21 @@ class BrowserActivity : ComponentActivity() {
                                 url = webView.url ?: url,
                                 name = monitorName.ifBlank { "Monitor" },
                                 selector = selectedSelector!!
-                            )
+                            ),
+                            browserViewModel.getRecordedInteractions().mapIndexed { index, data ->
+                                com.example.webpursuer.data.Interaction(
+                                    monitorId = 0, // Will be set in ViewModel
+                                    type = data.type,
+                                    selector = data.selector,
+                                    value = data.value,
+                                    orderIndex = index
+                                )
+                            }
                         )
                         showSaveDialog = false
                         browserViewModel.clearSelection()
-                        isSelecting = false
+                        browserViewModel.setSelectionMode(false)
+                        browserViewModel.clearInteractions()
                         finish() // Go back to Home
                     }) {
                         Text("Save")
@@ -111,7 +121,7 @@ class BrowserActivity : ComponentActivity() {
                     Button(onClick = { 
                         showSaveDialog = false 
                         browserViewModel.clearSelection()
-                        isSelecting = false
+                        browserViewModel.setSelectionMode(false)
                     }) {
                         Text("Cancel")
                     }
@@ -136,23 +146,17 @@ class BrowserActivity : ComponentActivity() {
                         }) {
                             Icon(Icons.Default.PlayArrow, contentDescription = "Go")
                         }
+                        // Record button removed as per user request (Auto-recording)
+                        
                         IconButton(onClick = { 
-                            isRecording = !isRecording
-                            if (isRecording) {
-                                injectRecorderScript()
-                            }
-                        }) {
-                            Text(if (isRecording) "REC" else "START")
-                        }
-                        IconButton(onClick = { 
-                            isSelecting = !isSelecting
+                            browserViewModel.toggleSelectionMode()
                             // Script injection happens in LaunchedEffect or onPageFinished
-                            if (isSelecting) injectRecorderScript() 
+                            if (!isSelecting) injectRecorderScript() // Inject if we are STARTING selection (actually logic is a bit mixed, just ensure script is there)
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Check, 
                                 contentDescription = "Select",
-                                tint = if (isSelecting) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                tint = if (isSelecting) androidx.compose.ui.graphics.Color.Green else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -169,6 +173,8 @@ class BrowserActivity : ComponentActivity() {
                                 injectRecorderScript() // Always inject to ensure functions are available
                                 if (isSelecting) {
                                     view?.evaluateJavascript("window.enableSelectionMode()", null)
+                                } else {
+                                    view?.evaluateJavascript("window.disableSelectionMode()", null)
                                 }
                             }
                         }
@@ -184,6 +190,20 @@ class BrowserActivity : ComponentActivity() {
 
     fun onElementSelected(selector: String) {
         browserViewModel.onElementSelected(selector)
+    }
+    
+    fun onInteractionRecorded(type: String, target: String, value: String) {
+        // Only record if NOT selecting
+        // We need to access the state 'isSelecting' here, but it's inside Composable.
+        // Ideally, WebAppInterface should talk to ViewModel directly or via a stable callback.
+        // For now, we can check browserViewModel state if we moved isSelecting there, 
+        // OR we can just rely on the fact that JS disables recording when in selection mode (if we implemented that in JS).
+        // Let's check browserViewModel.selectedSelector.value to see if we are "done". 
+        // Actually, the user requirement is: Record everything UNTIL the checkmark is clicked (isSelecting = true).
+        // So we should pass 'isSelecting' state to WebAppInterface or handle it here.
+        // Since 'isSelecting' is local state in Composable, it's hard to access here.
+        // Let's move 'isSelecting' to BrowserViewModel to make it cleaner.
+        browserViewModel.recordInteraction(type, target, value)
     }
 
     private fun injectRecorderScript() {

@@ -40,7 +40,7 @@ public final class CheckLogDao_Impl implements CheckLogDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR ABORT INTO `check_logs` (`id`,`monitorId`,`timestamp`,`result`,`message`) VALUES (nullif(?, 0),?,?,?,?)";
+        return "INSERT OR ABORT INTO `check_logs` (`id`,`monitorId`,`timestamp`,`result`,`message`,`content`) VALUES (nullif(?, 0),?,?,?,?,?)";
       }
 
       @Override
@@ -51,6 +51,11 @@ public final class CheckLogDao_Impl implements CheckLogDao {
         statement.bindLong(3, entity.getTimestamp());
         statement.bindString(4, entity.getResult());
         statement.bindString(5, entity.getMessage());
+        if (entity.getContent() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindString(6, entity.getContent());
+        }
       }
     };
     this.__preparedStmtOfDeleteLogsForMonitor = new SharedSQLiteStatement(__db) {
@@ -124,6 +129,7 @@ public final class CheckLogDao_Impl implements CheckLogDao {
           final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
           final int _cursorIndexOfResult = CursorUtil.getColumnIndexOrThrow(_cursor, "result");
           final int _cursorIndexOfMessage = CursorUtil.getColumnIndexOrThrow(_cursor, "message");
+          final int _cursorIndexOfContent = CursorUtil.getColumnIndexOrThrow(_cursor, "content");
           final List<CheckLog> _result = new ArrayList<CheckLog>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final CheckLog _item;
@@ -137,7 +143,13 @@ public final class CheckLogDao_Impl implements CheckLogDao {
             _tmpResult = _cursor.getString(_cursorIndexOfResult);
             final String _tmpMessage;
             _tmpMessage = _cursor.getString(_cursorIndexOfMessage);
-            _item = new CheckLog(_tmpId,_tmpMonitorId,_tmpTimestamp,_tmpResult,_tmpMessage);
+            final String _tmpContent;
+            if (_cursor.isNull(_cursorIndexOfContent)) {
+              _tmpContent = null;
+            } else {
+              _tmpContent = _cursor.getString(_cursorIndexOfContent);
+            }
+            _item = new CheckLog(_tmpId,_tmpMonitorId,_tmpTimestamp,_tmpResult,_tmpMessage,_tmpContent);
             _result.add(_item);
           }
           return _result;

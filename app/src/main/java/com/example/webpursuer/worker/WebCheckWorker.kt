@@ -1,0 +1,47 @@
+package com.example.webpursuer.worker
+
+import android.content.Context
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
+import com.example.webpursuer.data.AppDatabase
+import com.example.webpursuer.data.CheckLog
+import com.example.webpursuer.data.Monitor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
+import java.security.MessageDigest
+
+class WebCheckWorker(
+    context: Context,
+    params: WorkerParameters
+) : CoroutineWorker(context, params) {
+
+    private val database = AppDatabase.getDatabase(context)
+    private val monitorDao = database.monitorDao()
+    private val checkLogDao = database.checkLogDao()
+    private val interactionDao = database.interactionDao()
+    private val webChecker = WebChecker(context.applicationContext, monitorDao, checkLogDao, interactionDao)
+
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        try {
+            val monitors = monitorDao.getAllSync() // We need a sync version or collect the flow
+            val now = System.currentTimeMillis()
+
+            for (monitor in monitors) {
+                if (shouldCheck(monitor, now)) {
+                    webChecker.checkMonitor(monitor, now)
+                }
+            }
+            Result.success()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.retry()
+        }
+    }
+
+    private fun shouldCheck(monitor: Monitor, now: Long): Boolean {
+        if (!monitor.enabled) return false
+        val intervalMillis = monitor.checkIntervalMinutes * 60 * 1000
+        return (now - monitor.lastCheckTime) >= intervalMillis
+    }
+}

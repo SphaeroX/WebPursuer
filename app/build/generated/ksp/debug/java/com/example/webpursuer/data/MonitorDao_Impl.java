@@ -14,6 +14,7 @@ import androidx.room.util.DBUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import java.lang.Class;
 import java.lang.Exception;
+import java.lang.Long;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
@@ -104,6 +105,25 @@ public final class MonitorDao_Impl implements MonitorDao {
         statement.bindLong(9, entity.getId());
       }
     };
+  }
+
+  @Override
+  public Object insertAndReturnId(final Monitor monitor,
+      final Continuation<? super Long> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Long>() {
+      @Override
+      @NonNull
+      public Long call() throws Exception {
+        __db.beginTransaction();
+        try {
+          final Long _result = __insertionAdapterOfMonitor.insertAndReturnId(monitor);
+          __db.setTransactionSuccessful();
+          return _result;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
   }
 
   @Override
@@ -217,6 +237,62 @@ public final class MonitorDao_Impl implements MonitorDao {
         _statement.release();
       }
     });
+  }
+
+  @Override
+  public Object getAllSync(final Continuation<? super List<Monitor>> $completion) {
+    final String _sql = "SELECT * FROM monitors";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<Monitor>>() {
+      @Override
+      @NonNull
+      public List<Monitor> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfUrl = CursorUtil.getColumnIndexOrThrow(_cursor, "url");
+          final int _cursorIndexOfName = CursorUtil.getColumnIndexOrThrow(_cursor, "name");
+          final int _cursorIndexOfSelector = CursorUtil.getColumnIndexOrThrow(_cursor, "selector");
+          final int _cursorIndexOfCheckIntervalMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "checkIntervalMinutes");
+          final int _cursorIndexOfLastCheckTime = CursorUtil.getColumnIndexOrThrow(_cursor, "lastCheckTime");
+          final int _cursorIndexOfLastContentHash = CursorUtil.getColumnIndexOrThrow(_cursor, "lastContentHash");
+          final int _cursorIndexOfEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "enabled");
+          final List<Monitor> _result = new ArrayList<Monitor>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final Monitor _item;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final String _tmpUrl;
+            _tmpUrl = _cursor.getString(_cursorIndexOfUrl);
+            final String _tmpName;
+            _tmpName = _cursor.getString(_cursorIndexOfName);
+            final String _tmpSelector;
+            _tmpSelector = _cursor.getString(_cursorIndexOfSelector);
+            final long _tmpCheckIntervalMinutes;
+            _tmpCheckIntervalMinutes = _cursor.getLong(_cursorIndexOfCheckIntervalMinutes);
+            final long _tmpLastCheckTime;
+            _tmpLastCheckTime = _cursor.getLong(_cursorIndexOfLastCheckTime);
+            final String _tmpLastContentHash;
+            if (_cursor.isNull(_cursorIndexOfLastContentHash)) {
+              _tmpLastContentHash = null;
+            } else {
+              _tmpLastContentHash = _cursor.getString(_cursorIndexOfLastContentHash);
+            }
+            final boolean _tmpEnabled;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfEnabled);
+            _tmpEnabled = _tmp != 0;
+            _item = new Monitor(_tmpId,_tmpUrl,_tmpName,_tmpSelector,_tmpCheckIntervalMinutes,_tmpLastCheckTime,_tmpLastContentHash,_tmpEnabled);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
   }
 
   @Override

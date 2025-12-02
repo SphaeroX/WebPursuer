@@ -31,6 +31,35 @@ fun MonitorDetailScreen(
     var expanded by remember { mutableStateOf(false) }
     val intervals = listOf(10L to "10 Minutes", 60L to "1 Hour", 1440L to "24 Hours")
 
+    // Log Detail Dialog
+    var selectedLog by remember { mutableStateOf<CheckLog?>(null) }
+
+    if (selectedLog != null) {
+        AlertDialog(
+            onDismissRequest = { selectedLog = null },
+            title = { Text("Check Details") },
+            text = {
+                Column {
+                    Text("Result: ${selectedLog!!.result}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Message: ${selectedLog!!.message}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Content Found:", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = selectedLog!!.content ?: "No content stored",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.heightIn(max = 200.dp) // Limit height
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedLog = null }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -98,17 +127,21 @@ fun MonitorDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(logs) { log ->
-                    LogItem(log)
+                    LogItem(log, onClick = { selectedLog = log })
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogItem(log: CheckLog) {
+fun LogItem(log: CheckLog, onClick: () -> Unit) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Row(
             modifier = Modifier
                 .padding(12.dp)

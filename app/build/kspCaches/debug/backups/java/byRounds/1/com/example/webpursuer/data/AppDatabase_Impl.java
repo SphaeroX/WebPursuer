@@ -31,22 +31,26 @@ public final class AppDatabase_Impl extends AppDatabase {
 
   private volatile CheckLogDao _checkLogDao;
 
+  private volatile InteractionDao _interactionDao;
+
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(2) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(4) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `monitors` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, `name` TEXT NOT NULL, `selector` TEXT NOT NULL, `checkIntervalMinutes` INTEGER NOT NULL, `lastCheckTime` INTEGER NOT NULL, `lastContentHash` TEXT, `enabled` INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS `check_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `monitorId` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `result` TEXT NOT NULL, `message` TEXT NOT NULL, FOREIGN KEY(`monitorId`) REFERENCES `monitors`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `check_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `monitorId` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `result` TEXT NOT NULL, `message` TEXT NOT NULL, `content` TEXT, FOREIGN KEY(`monitorId`) REFERENCES `monitors`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `interactions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `monitorId` INTEGER NOT NULL, `type` TEXT NOT NULL, `selector` TEXT NOT NULL, `value` TEXT, `orderIndex` INTEGER NOT NULL, FOREIGN KEY(`monitorId`) REFERENCES `monitors`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b0b772b5f35035a7131caee14dad644f')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd40371d538f6558f9994953156a66fe0')");
       }
 
       @Override
       public void dropAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("DROP TABLE IF EXISTS `monitors`");
         db.execSQL("DROP TABLE IF EXISTS `check_logs`");
+        db.execSQL("DROP TABLE IF EXISTS `interactions`");
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
           for (RoomDatabase.Callback _callback : _callbacks) {
@@ -109,12 +113,13 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoMonitors + "\n"
                   + " Found:\n" + _existingMonitors);
         }
-        final HashMap<String, TableInfo.Column> _columnsCheckLogs = new HashMap<String, TableInfo.Column>(5);
+        final HashMap<String, TableInfo.Column> _columnsCheckLogs = new HashMap<String, TableInfo.Column>(6);
         _columnsCheckLogs.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsCheckLogs.put("monitorId", new TableInfo.Column("monitorId", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsCheckLogs.put("timestamp", new TableInfo.Column("timestamp", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsCheckLogs.put("result", new TableInfo.Column("result", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsCheckLogs.put("message", new TableInfo.Column("message", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsCheckLogs.put("content", new TableInfo.Column("content", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysCheckLogs = new HashSet<TableInfo.ForeignKey>(1);
         _foreignKeysCheckLogs.add(new TableInfo.ForeignKey("monitors", "CASCADE", "NO ACTION", Arrays.asList("monitorId"), Arrays.asList("id")));
         final HashSet<TableInfo.Index> _indicesCheckLogs = new HashSet<TableInfo.Index>(0);
@@ -125,9 +130,26 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoCheckLogs + "\n"
                   + " Found:\n" + _existingCheckLogs);
         }
+        final HashMap<String, TableInfo.Column> _columnsInteractions = new HashMap<String, TableInfo.Column>(6);
+        _columnsInteractions.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsInteractions.put("monitorId", new TableInfo.Column("monitorId", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsInteractions.put("type", new TableInfo.Column("type", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsInteractions.put("selector", new TableInfo.Column("selector", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsInteractions.put("value", new TableInfo.Column("value", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsInteractions.put("orderIndex", new TableInfo.Column("orderIndex", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysInteractions = new HashSet<TableInfo.ForeignKey>(1);
+        _foreignKeysInteractions.add(new TableInfo.ForeignKey("monitors", "CASCADE", "NO ACTION", Arrays.asList("monitorId"), Arrays.asList("id")));
+        final HashSet<TableInfo.Index> _indicesInteractions = new HashSet<TableInfo.Index>(0);
+        final TableInfo _infoInteractions = new TableInfo("interactions", _columnsInteractions, _foreignKeysInteractions, _indicesInteractions);
+        final TableInfo _existingInteractions = TableInfo.read(db, "interactions");
+        if (!_infoInteractions.equals(_existingInteractions)) {
+          return new RoomOpenHelper.ValidationResult(false, "interactions(com.example.webpursuer.data.Interaction).\n"
+                  + " Expected:\n" + _infoInteractions + "\n"
+                  + " Found:\n" + _existingInteractions);
+        }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "b0b772b5f35035a7131caee14dad644f", "b2b7412c9d14c952e7f2f64e6ba8fe2a");
+    }, "d40371d538f6558f9994953156a66fe0", "b9d03c9dd6b14e885564e03b3d83e7b3");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;
@@ -138,7 +160,7 @@ public final class AppDatabase_Impl extends AppDatabase {
   protected InvalidationTracker createInvalidationTracker() {
     final HashMap<String, String> _shadowTablesMap = new HashMap<String, String>(0);
     final HashMap<String, Set<String>> _viewTables = new HashMap<String, Set<String>>(0);
-    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "monitors","check_logs");
+    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "monitors","check_logs","interactions");
   }
 
   @Override
@@ -156,6 +178,7 @@ public final class AppDatabase_Impl extends AppDatabase {
       }
       _db.execSQL("DELETE FROM `monitors`");
       _db.execSQL("DELETE FROM `check_logs`");
+      _db.execSQL("DELETE FROM `interactions`");
       super.setTransactionSuccessful();
     } finally {
       super.endTransaction();
@@ -175,6 +198,7 @@ public final class AppDatabase_Impl extends AppDatabase {
     final HashMap<Class<?>, List<Class<?>>> _typeConvertersMap = new HashMap<Class<?>, List<Class<?>>>();
     _typeConvertersMap.put(MonitorDao.class, MonitorDao_Impl.getRequiredConverters());
     _typeConvertersMap.put(CheckLogDao.class, CheckLogDao_Impl.getRequiredConverters());
+    _typeConvertersMap.put(InteractionDao.class, InteractionDao_Impl.getRequiredConverters());
     return _typeConvertersMap;
   }
 
@@ -217,6 +241,20 @@ public final class AppDatabase_Impl extends AppDatabase {
           _checkLogDao = new CheckLogDao_Impl(this);
         }
         return _checkLogDao;
+      }
+    }
+  }
+
+  @Override
+  public InteractionDao interactionDao() {
+    if (_interactionDao != null) {
+      return _interactionDao;
+    } else {
+      synchronized(this) {
+        if(_interactionDao == null) {
+          _interactionDao = new InteractionDao_Impl(this);
+        }
+        return _interactionDao;
       }
     }
   }

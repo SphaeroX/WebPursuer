@@ -12,8 +12,14 @@ interface MonitorDao {
     @Query("SELECT * FROM monitors")
     fun getAll(): Flow<List<Monitor>>
 
+    @Query("SELECT * FROM monitors")
+    suspend fun getAllSync(): List<Monitor>
+
     @Query("SELECT * FROM monitors WHERE id = :id")
     suspend fun getById(id: Int): Monitor?
+
+    @Insert
+    suspend fun insertAndReturnId(monitor: Monitor): Long
 
     @Insert
     suspend fun insert(monitor: Monitor)
