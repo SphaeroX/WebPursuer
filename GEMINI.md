@@ -59,3 +59,13 @@ Um das Projekt ohne Android Studio zu bauen und zu debuggen, können folgende Be
 *   **"gradle" command not found**: Wenn der `gradle` Befehl nicht gefunden wird, suchen Sie nach einer lokalen Gradle-Installation (z.B. in `C:\Users\<User>\.gradle\wrapper\dists\...`) oder nutzen Sie den in Android Studio integrierten Gradle-Wrapper, indem Sie das Projekt dort einmalig öffnen.
 *   **Android resource linking failed**: Dies deutet oft auf fehlende Ressourcen hin, die im `AndroidManifest.xml` referenziert werden (z.B. Icons oder XML-Regeln). Überprüfen Sie das Manifest auf Referenzen zu `@mipmap/...` oder `@xml/...`, die noch nicht existieren, und entfernen Sie diese vorerst.
 *   **Build Logs**: Nutzen Sie `.\gradlew assembleDebug --stacktrace > build_log.txt 2>&1`, um die vollständigen Logs in eine Datei zu schreiben, falls die Konsole den Fehler abschneidet. Nach der Analyse der Logs können diese wieder gelöscht werden.
+*   **Kotlin & Compose Versionen**: Achten Sie auf kompatible Versionen.
+    *   Kotlin: 1.9.22 (benötigt für Compose Compiler 1.5.10)
+    *   KSP Plugin: 1.9.22-1.0.17
+    *   Compose Compiler: 1.5.10
+    *   *Hinweis*: KSP Plugin sollte im Root `build.gradle.kts` definiert sein, um Versionskonflikte zu vermeiden.
+*   **Compose in MainActivity**: Wenn `viewModel()` in einer Activity verwendet wird, muss dies innerhalb eines `@Composable` Kontexts geschehen (z.B. innerhalb von `setContent { ... }`), nicht direkt in `onCreate` oder Callbacks, die keinen Composable-Scope haben.
+*   **Encoding Probleme**: Bei der Analyse von Logs mit `findstr` kann es zu Encoding-Problemen kommen (Unicode). Nutzen Sie stattdessen PowerShell's `Select-String` oder `type file.txt`.
+
+> [!IMPORTANT]
+> **Automatische Aktualisierung**: Diese Datei (`GEMINI.md`) soll bei wichtigen neuen Erkenntnissen, insbesondere bezüglich Build-Konfigurationen, Fehlern und deren Lösungen, automatisch aktualisiert werden, um zukünftiges Debugging zu erleichtern.
