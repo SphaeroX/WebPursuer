@@ -17,15 +17,8 @@ class MainActivity : ComponentActivity() {
                 HomeScreen(
                     viewModel = viewModel,
                     onAddMonitorClick = {
-                        // TODO: Navigate to Add Monitor Screen
-                        // For now, let's just add a dummy monitor for testing
-                        viewModel.addMonitor(
-                            com.example.webpursuer.data.Monitor(
-                                url = "https://example.com",
-                                name = "Example Monitor",
-                                selector = "body"
-                            )
-                        )
+                        val intent = android.content.Intent(this, com.example.webpursuer.ui.BrowserActivity::class.java)
+                        startActivity(intent)
                     }
                 )
             }

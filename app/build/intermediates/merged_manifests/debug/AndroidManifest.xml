@@ -40,6 +40,9 @@
             </intent-filter>
         </activity>
         <activity
+            android:name="com.example.webpursuer.ui.BrowserActivity"
+            android:exported="false" />
+        <activity
             android:name="androidx.activity.ComponentActivity"
             android:exported="true" />
         <activity

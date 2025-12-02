@@ -5,9 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Monitor::class], version = 1)
+@Database(entities = [Monitor::class, CheckLog::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun monitorDao(): MonitorDao
+    abstract fun checkLogDao(): CheckLogDao
 
     companion object {
         @Volatile
@@ -19,7 +20,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "webpursuer_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // For development simplicity
+                .build()
                 INSTANCE = instance
                 instance
             }

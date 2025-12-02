@@ -25,6 +25,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -38,55 +41,67 @@ fun HomeScreen(
     onAddMonitorClick: () -> Unit
 ) {
     val monitors by viewModel.monitors.collectAsState()
+    var selectedMonitor by remember { mutableStateOf<Monitor?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("WebPursuer") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAddMonitorClick) {
-                Icon(Icons.Default.Add, contentDescription = "Add Monitor")
-            }
-        }
-    ) { innerPadding ->
-        if (monitors.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("No monitors yet. Add one!")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(monitors) { monitor ->
-                    MonitorItem(
-                        monitor = monitor,
-                        onDeleteClick = { viewModel.deleteMonitor(monitor) }
+    if (selectedMonitor != null) {
+        MonitorDetailScreen(
+            monitor = selectedMonitor!!,
+            viewModel = viewModel,
+            onBackClick = { selectedMonitor = null }
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("WebPursuer") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = onAddMonitorClick) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Monitor")
+                }
+            }
+        ) { innerPadding ->
+            if (monitors.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("No monitors yet. Add one!")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(monitors) { monitor ->
+                        MonitorItem(
+                            monitor = monitor,
+                            onClick = { selectedMonitor = monitor },
+                            onDeleteClick = { viewModel.deleteMonitor(monitor) }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MonitorItem(monitor: Monitor, onDeleteClick: () -> Unit) {
+fun MonitorItem(monitor: Monitor, onClick: () -> Unit, onDeleteClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
