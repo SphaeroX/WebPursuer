@@ -36,14 +36,14 @@ public final class AppDatabase_Impl extends AppDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(4) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(2) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS `monitors` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, `name` TEXT NOT NULL, `selector` TEXT NOT NULL, `checkIntervalMinutes` INTEGER NOT NULL, `lastCheckTime` INTEGER NOT NULL, `lastContentHash` TEXT, `enabled` INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `monitors` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, `name` TEXT NOT NULL, `selector` TEXT NOT NULL, `checkIntervalMinutes` INTEGER NOT NULL, `lastCheckTime` INTEGER NOT NULL, `lastContentHash` TEXT, `enabled` INTEGER NOT NULL, `llmPrompt` TEXT, `llmEnabled` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `check_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `monitorId` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `result` TEXT NOT NULL, `message` TEXT NOT NULL, `content` TEXT, FOREIGN KEY(`monitorId`) REFERENCES `monitors`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE TABLE IF NOT EXISTS `interactions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `monitorId` INTEGER NOT NULL, `type` TEXT NOT NULL, `selector` TEXT NOT NULL, `value` TEXT, `orderIndex` INTEGER NOT NULL, FOREIGN KEY(`monitorId`) REFERENCES `monitors`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd40371d538f6558f9994953156a66fe0')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '324cfeb61be45ece37ac4ecf80523abc')");
       }
 
       @Override
@@ -95,7 +95,7 @@ public final class AppDatabase_Impl extends AppDatabase {
       @NonNull
       public RoomOpenHelper.ValidationResult onValidateSchema(
           @NonNull final SupportSQLiteDatabase db) {
-        final HashMap<String, TableInfo.Column> _columnsMonitors = new HashMap<String, TableInfo.Column>(8);
+        final HashMap<String, TableInfo.Column> _columnsMonitors = new HashMap<String, TableInfo.Column>(10);
         _columnsMonitors.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsMonitors.put("url", new TableInfo.Column("url", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsMonitors.put("name", new TableInfo.Column("name", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -104,6 +104,8 @@ public final class AppDatabase_Impl extends AppDatabase {
         _columnsMonitors.put("lastCheckTime", new TableInfo.Column("lastCheckTime", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsMonitors.put("lastContentHash", new TableInfo.Column("lastContentHash", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsMonitors.put("enabled", new TableInfo.Column("enabled", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsMonitors.put("llmPrompt", new TableInfo.Column("llmPrompt", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsMonitors.put("llmEnabled", new TableInfo.Column("llmEnabled", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysMonitors = new HashSet<TableInfo.ForeignKey>(0);
         final HashSet<TableInfo.Index> _indicesMonitors = new HashSet<TableInfo.Index>(0);
         final TableInfo _infoMonitors = new TableInfo("monitors", _columnsMonitors, _foreignKeysMonitors, _indicesMonitors);
@@ -149,7 +151,7 @@ public final class AppDatabase_Impl extends AppDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "d40371d538f6558f9994953156a66fe0", "b9d03c9dd6b14e885564e03b3d83e7b3");
+    }, "324cfeb61be45ece37ac4ecf80523abc", "c2582b9963807f3db2066480a6cd408e");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

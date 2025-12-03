@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.webpursuer.app-mergeDebugResources-64:/values-v21/values-v21.xml",
+            "outputFile": "com.example.webpursuer.app-mergeDebugResources-66:/values-v21/values-v21.xml",
             "map": [
                 {
                     "source": "C:\\Users\\MGasc\\.gradle\\caches\\8.11.1\\transforms\\0ee8edd674f5ab58843f869a994cccb0\\transformed\\material-1.11.0\\res\\values-v21\\values-v21.xml",

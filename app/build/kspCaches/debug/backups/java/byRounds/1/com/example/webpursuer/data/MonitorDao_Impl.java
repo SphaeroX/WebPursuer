@@ -45,7 +45,7 @@ public final class MonitorDao_Impl implements MonitorDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR ABORT INTO `monitors` (`id`,`url`,`name`,`selector`,`checkIntervalMinutes`,`lastCheckTime`,`lastContentHash`,`enabled`) VALUES (nullif(?, 0),?,?,?,?,?,?,?)";
+        return "INSERT OR ABORT INTO `monitors` (`id`,`url`,`name`,`selector`,`checkIntervalMinutes`,`lastCheckTime`,`lastContentHash`,`enabled`,`llmPrompt`,`llmEnabled`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -64,6 +64,13 @@ public final class MonitorDao_Impl implements MonitorDao {
         }
         final int _tmp = entity.getEnabled() ? 1 : 0;
         statement.bindLong(8, _tmp);
+        if (entity.getLlmPrompt() == null) {
+          statement.bindNull(9);
+        } else {
+          statement.bindString(9, entity.getLlmPrompt());
+        }
+        final int _tmp_1 = entity.getLlmEnabled() ? 1 : 0;
+        statement.bindLong(10, _tmp_1);
       }
     };
     this.__deletionAdapterOfMonitor = new EntityDeletionOrUpdateAdapter<Monitor>(__db) {
@@ -83,7 +90,7 @@ public final class MonitorDao_Impl implements MonitorDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `monitors` SET `id` = ?,`url` = ?,`name` = ?,`selector` = ?,`checkIntervalMinutes` = ?,`lastCheckTime` = ?,`lastContentHash` = ?,`enabled` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `monitors` SET `id` = ?,`url` = ?,`name` = ?,`selector` = ?,`checkIntervalMinutes` = ?,`lastCheckTime` = ?,`lastContentHash` = ?,`enabled` = ?,`llmPrompt` = ?,`llmEnabled` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -102,7 +109,14 @@ public final class MonitorDao_Impl implements MonitorDao {
         }
         final int _tmp = entity.getEnabled() ? 1 : 0;
         statement.bindLong(8, _tmp);
-        statement.bindLong(9, entity.getId());
+        if (entity.getLlmPrompt() == null) {
+          statement.bindNull(9);
+        } else {
+          statement.bindString(9, entity.getLlmPrompt());
+        }
+        final int _tmp_1 = entity.getLlmEnabled() ? 1 : 0;
+        statement.bindLong(10, _tmp_1);
+        statement.bindLong(11, entity.getId());
       }
     };
   }
@@ -198,6 +212,8 @@ public final class MonitorDao_Impl implements MonitorDao {
           final int _cursorIndexOfLastCheckTime = CursorUtil.getColumnIndexOrThrow(_cursor, "lastCheckTime");
           final int _cursorIndexOfLastContentHash = CursorUtil.getColumnIndexOrThrow(_cursor, "lastContentHash");
           final int _cursorIndexOfEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "enabled");
+          final int _cursorIndexOfLlmPrompt = CursorUtil.getColumnIndexOrThrow(_cursor, "llmPrompt");
+          final int _cursorIndexOfLlmEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "llmEnabled");
           final List<Monitor> _result = new ArrayList<Monitor>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Monitor _item;
@@ -223,7 +239,17 @@ public final class MonitorDao_Impl implements MonitorDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfEnabled);
             _tmpEnabled = _tmp != 0;
-            _item = new Monitor(_tmpId,_tmpUrl,_tmpName,_tmpSelector,_tmpCheckIntervalMinutes,_tmpLastCheckTime,_tmpLastContentHash,_tmpEnabled);
+            final String _tmpLlmPrompt;
+            if (_cursor.isNull(_cursorIndexOfLlmPrompt)) {
+              _tmpLlmPrompt = null;
+            } else {
+              _tmpLlmPrompt = _cursor.getString(_cursorIndexOfLlmPrompt);
+            }
+            final boolean _tmpLlmEnabled;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfLlmEnabled);
+            _tmpLlmEnabled = _tmp_1 != 0;
+            _item = new Monitor(_tmpId,_tmpUrl,_tmpName,_tmpSelector,_tmpCheckIntervalMinutes,_tmpLastCheckTime,_tmpLastContentHash,_tmpEnabled,_tmpLlmPrompt,_tmpLlmEnabled);
             _result.add(_item);
           }
           return _result;
@@ -258,6 +284,8 @@ public final class MonitorDao_Impl implements MonitorDao {
           final int _cursorIndexOfLastCheckTime = CursorUtil.getColumnIndexOrThrow(_cursor, "lastCheckTime");
           final int _cursorIndexOfLastContentHash = CursorUtil.getColumnIndexOrThrow(_cursor, "lastContentHash");
           final int _cursorIndexOfEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "enabled");
+          final int _cursorIndexOfLlmPrompt = CursorUtil.getColumnIndexOrThrow(_cursor, "llmPrompt");
+          final int _cursorIndexOfLlmEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "llmEnabled");
           final List<Monitor> _result = new ArrayList<Monitor>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Monitor _item;
@@ -283,7 +311,17 @@ public final class MonitorDao_Impl implements MonitorDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfEnabled);
             _tmpEnabled = _tmp != 0;
-            _item = new Monitor(_tmpId,_tmpUrl,_tmpName,_tmpSelector,_tmpCheckIntervalMinutes,_tmpLastCheckTime,_tmpLastContentHash,_tmpEnabled);
+            final String _tmpLlmPrompt;
+            if (_cursor.isNull(_cursorIndexOfLlmPrompt)) {
+              _tmpLlmPrompt = null;
+            } else {
+              _tmpLlmPrompt = _cursor.getString(_cursorIndexOfLlmPrompt);
+            }
+            final boolean _tmpLlmEnabled;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfLlmEnabled);
+            _tmpLlmEnabled = _tmp_1 != 0;
+            _item = new Monitor(_tmpId,_tmpUrl,_tmpName,_tmpSelector,_tmpCheckIntervalMinutes,_tmpLastCheckTime,_tmpLastContentHash,_tmpEnabled,_tmpLlmPrompt,_tmpLlmEnabled);
             _result.add(_item);
           }
           return _result;
@@ -316,6 +354,8 @@ public final class MonitorDao_Impl implements MonitorDao {
           final int _cursorIndexOfLastCheckTime = CursorUtil.getColumnIndexOrThrow(_cursor, "lastCheckTime");
           final int _cursorIndexOfLastContentHash = CursorUtil.getColumnIndexOrThrow(_cursor, "lastContentHash");
           final int _cursorIndexOfEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "enabled");
+          final int _cursorIndexOfLlmPrompt = CursorUtil.getColumnIndexOrThrow(_cursor, "llmPrompt");
+          final int _cursorIndexOfLlmEnabled = CursorUtil.getColumnIndexOrThrow(_cursor, "llmEnabled");
           final Monitor _result;
           if (_cursor.moveToFirst()) {
             final int _tmpId;
@@ -340,7 +380,17 @@ public final class MonitorDao_Impl implements MonitorDao {
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfEnabled);
             _tmpEnabled = _tmp != 0;
-            _result = new Monitor(_tmpId,_tmpUrl,_tmpName,_tmpSelector,_tmpCheckIntervalMinutes,_tmpLastCheckTime,_tmpLastContentHash,_tmpEnabled);
+            final String _tmpLlmPrompt;
+            if (_cursor.isNull(_cursorIndexOfLlmPrompt)) {
+              _tmpLlmPrompt = null;
+            } else {
+              _tmpLlmPrompt = _cursor.getString(_cursorIndexOfLlmPrompt);
+            }
+            final boolean _tmpLlmEnabled;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfLlmEnabled);
+            _tmpLlmEnabled = _tmp_1 != 0;
+            _result = new Monitor(_tmpId,_tmpUrl,_tmpName,_tmpSelector,_tmpCheckIntervalMinutes,_tmpLastCheckTime,_tmpLastContentHash,_tmpEnabled,_tmpLlmPrompt,_tmpLlmEnabled);
           } else {
             _result = null;
           }

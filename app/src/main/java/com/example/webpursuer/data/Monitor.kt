@@ -12,5 +12,7 @@ data class Monitor(
     val checkIntervalMinutes: Long = 15,
     val lastCheckTime: Long = 0,
     val lastContentHash: String? = null,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val llmPrompt: String? = null,
+    val llmEnabled: Boolean = false
 )

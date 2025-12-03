@@ -115,6 +115,41 @@ fun MonitorDetailScreen(
                             }
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // LLM Configuration
+                    Text("Intelligent Monitoring (LLM)", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Enable LLM Check", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = monitor.llmEnabled,
+                            onCheckedChange = { 
+                                viewModel.updateMonitor(monitor.copy(llmEnabled = it)) 
+                            }
+                        )
+                    }
+                    
+                    if (monitor.llmEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = monitor.llmPrompt ?: "",
+                            onValueChange = { 
+                                viewModel.updateMonitor(monitor.copy(llmPrompt = it)) 
+                            },
+                            label = { Text("Condition Prompt") },
+                            placeholder = { Text("e.g., Notify if price is below $50") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 2
+                        )
+                    }
                 }
             }
 

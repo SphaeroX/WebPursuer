@@ -58,7 +58,10 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     
     fun checkNow(monitor: Monitor) {
         viewModelScope.launch(Dispatchers.IO) {
-            val webChecker = com.example.webpursuer.worker.WebChecker(getApplication(), monitorDao, checkLogDao, interactionDao)
+            val context = getApplication<Application>()
+            val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
+            val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository)
+            val webChecker = com.example.webpursuer.worker.WebChecker(context, monitorDao, checkLogDao, interactionDao, openRouterService)
             webChecker.checkMonitor(monitor, System.currentTimeMillis())
         }
     }

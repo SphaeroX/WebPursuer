@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.webpursuer.app-mergeDebugResources-64:/values-mk/values-mk.xml",
+            "outputFile": "com.example.webpursuer.app-mergeDebugResources-66:/values-mk/values-mk.xml",
             "map": [
                 {
                     "source": "C:\\Users\\MGasc\\.gradle\\caches\\8.11.1\\transforms\\23c63bb9f1c2bc1e70318dd27129df73\\transformed\\jetified-ui-release\\res\\values-mk\\values-mk.xml",

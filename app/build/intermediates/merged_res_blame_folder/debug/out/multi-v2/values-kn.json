@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.webpursuer.app-mergeDebugResources-64:/values-kn/values-kn.xml",
+            "outputFile": "com.example.webpursuer.app-mergeDebugResources-66:/values-kn/values-kn.xml",
             "map": [
                 {
                     "source": "C:\\Users\\MGasc\\.gradle\\caches\\8.11.1\\transforms\\25f546920bb02c658c90b2654894b456\\transformed\\appcompat-1.6.1\\res\\values-kn\\values-kn.xml",

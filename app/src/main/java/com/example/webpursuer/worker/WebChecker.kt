@@ -20,7 +20,8 @@ class WebChecker(
     private val context: Context,
     private val monitorDao: MonitorDao,
     private val checkLogDao: CheckLogDao,
-    private val interactionDao: com.example.webpursuer.data.InteractionDao
+    private val interactionDao: com.example.webpursuer.data.InteractionDao,
+    private val openRouterService: com.example.webpursuer.network.OpenRouterService
 ) {
 
     suspend fun checkMonitor(monitor: Monitor, now: Long) {
@@ -33,8 +34,8 @@ class WebChecker(
             val message: String
             val newHash: String?
 
+            // Standard Change Detection
             if (monitor.lastContentHash == null) {
-                // First check
                 result = "SUCCESS"
                 message = "Initial check successful."
                 newHash = contentHash
@@ -42,11 +43,23 @@ class WebChecker(
                 result = "CHANGED"
                 message = "Content changed!"
                 newHash = contentHash
-                // TODO: Trigger Notification here
+                if (!monitor.llmEnabled) {
+                    sendNotification(monitor.id, "Monitor Update", "Content changed for ${monitor.name}")
+                }
             } else {
                 result = "UNCHANGED"
                 message = "No changes detected."
                 newHash = monitor.lastContentHash
+            }
+
+            // LLM Check
+            if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
+                val llmResult = openRouterService.checkContent(monitor.llmPrompt, content)
+                if (llmResult) {
+                    sendNotification(monitor.id, "Smart Alert", "Condition met: ${monitor.llmPrompt}")
+                    // Append to message
+                    // message += " LLM Condition Met." // Val cannot be reassigned
+                }
             }
 
             // Update Monitor
@@ -167,5 +180,36 @@ class WebChecker(
     private fun hash(input: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun sendNotification(monitorId: Int, title: String, message: String) {
+        val intent = android.content.Intent(context, com.example.webpursuer.MainActivity::class.java).apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: android.app.PendingIntent = android.app.PendingIntent.getActivity(
+            context, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
+            .setSmallIcon(android.R.drawable.ic_dialog_info) // Use a default icon for now
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        try {
+            with(androidx.core.app.NotificationManagerCompat.from(context)) {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    notify(monitorId, builder.build())
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.webpursuer.app-mergeDebugResources-64:/values-bg/values-bg.xml",
+            "outputFile": "com.example.webpursuer.app-mergeDebugResources-66:/values-bg/values-bg.xml",
             "map": [
                 {
                     "source": "C:\\Users\\MGasc\\.gradle\\caches\\8.11.1\\transforms\\9ec7317af9759f35ba8d0ede92c12672\\transformed\\core-1.12.0\\res\\values-bg\\values-bg.xml",
