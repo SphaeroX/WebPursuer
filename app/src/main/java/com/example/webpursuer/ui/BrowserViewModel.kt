@@ -12,6 +12,9 @@ class BrowserViewModel : ViewModel() {
     private val _isSelecting = MutableStateFlow(false)
     val isSelecting: StateFlow<Boolean> = _isSelecting.asStateFlow()
 
+    private val _currentSelector = MutableStateFlow<String>("")
+    val currentSelector: StateFlow<String> = _currentSelector.asStateFlow()
+
     private val _recordedInteractions = mutableListOf<InteractionData>()
     
     fun toggleSelectionMode() {
@@ -28,8 +31,13 @@ class BrowserViewModel : ViewModel() {
         _selectedSelector.value = selector
     }
 
+    fun updateCurrentSelector(selector: String) {
+        _currentSelector.value = selector
+    }
+
     fun clearSelection() {
         _selectedSelector.value = null
+        _currentSelector.value = ""
     }
     
     fun recordInteraction(type: String, selector: String, value: String) {

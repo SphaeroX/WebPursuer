@@ -21,6 +21,10 @@ import com.example.webpursuer.R
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
 
 import androidx.activity.viewModels
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -49,6 +53,7 @@ class BrowserActivity : ComponentActivity() {
         var url by remember { mutableStateOf("https://google.com") }
         // isRecording removed
         val isSelecting by browserViewModel.isSelecting.collectAsState()
+        val currentSelector by browserViewModel.currentSelector.collectAsState()
         var monitorName by remember { mutableStateOf("") }
         
         val selectedSelector by browserViewModel.selectedSelector.collectAsState()
@@ -131,36 +136,69 @@ class BrowserActivity : ComponentActivity() {
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { 
-                        TextField(
-                            value = url, 
-                            onValueChange = { url = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        ) 
-                    },
-                    actions = {
-                        IconButton(onClick = { 
-                            webView.loadUrl(url) 
-                        }) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = "Go")
+                Column {
+                    TopAppBar(
+                        title = { 
+                            TextField(
+                                value = url, 
+                                onValueChange = { url = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            ) 
+                        },
+                        actions = {
+                            IconButton(onClick = { 
+                                webView.loadUrl(url) 
+                            }) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Go")
+                            }
+                            
+                            IconButton(onClick = { 
+                                browserViewModel.toggleSelectionMode()
+                                // Script injection happens in LaunchedEffect or onPageFinished
+                                if (!isSelecting) injectRecorderScript() 
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Check, 
+                                    contentDescription = "Select",
+                                    tint = if (isSelecting) Color.Green else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
-                        // Record button removed as per user request (Auto-recording)
-                        
-                        IconButton(onClick = { 
-                            browserViewModel.toggleSelectionMode()
-                            // Script injection happens in LaunchedEffect or onPageFinished
-                            if (!isSelecting) injectRecorderScript() // Inject if we are STARTING selection (actually logic is a bit mixed, just ensure script is there)
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Check, 
-                                contentDescription = "Select",
-                                tint = if (isSelecting) androidx.compose.ui.graphics.Color.Green else MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    if (isSelecting) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Black)
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = currentSelector,
+                                color = Color.White,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = { 
+                                    if (currentSelector.isNotEmpty()) {
+                                        browserViewModel.onElementSelected(currentSelector)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF008f39)),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.height(36.dp)
+                            ) {
+                                Text("Auswählen", style = MaterialTheme.typography.labelMedium)
+                            }
                         }
                     }
-                )
+                }
             }
         ) { innerPadding ->
             AndroidView(
@@ -191,18 +229,20 @@ class BrowserActivity : ComponentActivity() {
     fun onElementSelected(selector: String) {
         browserViewModel.onElementSelected(selector)
     }
+
+    fun onSelectorUpdated(selector: String) {
+        runOnUiThread {
+            browserViewModel.updateCurrentSelector(selector)
+        }
+    }
+
+    fun onSelectionConfirmed(selector: String) {
+        runOnUiThread {
+            browserViewModel.onElementSelected(selector)
+        }
+    }
     
     fun onInteractionRecorded(type: String, target: String, value: String) {
-        // Only record if NOT selecting
-        // We need to access the state 'isSelecting' here, but it's inside Composable.
-        // Ideally, WebAppInterface should talk to ViewModel directly or via a stable callback.
-        // For now, we can check browserViewModel state if we moved isSelecting there, 
-        // OR we can just rely on the fact that JS disables recording when in selection mode (if we implemented that in JS).
-        // Let's check browserViewModel.selectedSelector.value to see if we are "done". 
-        // Actually, the user requirement is: Record everything UNTIL the checkmark is clicked (isSelecting = true).
-        // So we should pass 'isSelecting' state to WebAppInterface or handle it here.
-        // Since 'isSelecting' is local state in Composable, it's hard to access here.
-        // Let's move 'isSelecting' to BrowserViewModel to make it cleaner.
         browserViewModel.recordInteraction(type, target, value)
     }
 

@@ -32,11 +32,6 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
 
     fun addMonitor(monitor: Monitor, interactions: List<com.example.webpursuer.data.Interaction>) {
         viewModelScope.launch {
-            monitorDao.insert(monitor)
-            // We need the ID of the inserted monitor. 
-            // Since Room's insert returns Long (rowId), we should change DAO to return Long.
-            // But for now, let's assume we can get the last inserted ID or change DAO.
-            // A better way is to let insert return Long.
             val insertedId = monitorDao.insertAndReturnId(monitor)
             
             val interactionsWithId = interactions.map { it.copy(monitorId = insertedId.toInt()) }

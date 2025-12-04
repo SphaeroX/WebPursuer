@@ -18,6 +18,17 @@ class WebAppInterface(private val mContext: Context) {
 
     @JavascriptInterface
     fun elementSelected(selector: String) {
+        // Deprecated, use updateSelector or confirmSelection
         (mContext as? BrowserActivity)?.onElementSelected(selector)
+    }
+
+    @JavascriptInterface
+    fun updateSelector(selector: String) {
+        (mContext as? BrowserActivity)?.onSelectorUpdated(selector)
+    }
+
+    @JavascriptInterface
+    fun confirmSelection(selector: String) {
+        (mContext as? BrowserActivity)?.onSelectionConfirmed(selector)
     }
 }
