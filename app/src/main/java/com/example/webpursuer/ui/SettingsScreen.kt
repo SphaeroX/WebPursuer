@@ -70,6 +70,46 @@ fun SettingsScreen(
                 singleLine = true
             )
             
+            Spacer(modifier = Modifier.height(16.dp))
+
+            var testResult by remember { mutableStateOf<String?>(null) }
+            var isTesting by remember { mutableStateOf(false) }
+            val openRouterService = remember { com.example.webpursuer.network.OpenRouterService(settingsRepository) }
+
+            Button(
+                onClick = {
+                    isTesting = true
+                    testResult = null
+                    scope.launch {
+                        testResult = openRouterService.testConnection(apiKeyInput, modelInput)
+                        isTesting = false
+                    }
+                },
+                enabled = !isTesting && apiKeyInput.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                if (isTesting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onSecondary
+                    )
+                } else {
+                    Text("Test Connection")
+                }
+            }
+            
+            if (testResult != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = testResult!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (testResult!!.startsWith("Error")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
             
             Button(

@@ -25,7 +25,7 @@ class SettingsRepository(private val context: Context) {
 
     val model: Flow<String> = context.dataStore.data
         .map { preferences ->
-            preferences[OPENROUTER_MODEL] ?: "google/gemini-pro" // Default model
+            preferences[OPENROUTER_MODEL] ?: "google/gemini-2.5-flash-lite" // Default model
         }
 
     suspend fun saveApiKey(key: String) {

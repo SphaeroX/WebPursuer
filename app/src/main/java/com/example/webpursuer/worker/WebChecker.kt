@@ -30,8 +30,8 @@ class WebChecker(
             val content = loadContent(monitor.url, monitor.selector, interactions)
             val contentHash = hash(content)
 
-            val result: String
-            val message: String
+            var result: String
+            var message: String
             val newHash: String?
 
             // Standard Change Detection
@@ -43,23 +43,22 @@ class WebChecker(
                 result = "CHANGED"
                 message = "Content changed!"
                 newHash = contentHash
-                if (!monitor.llmEnabled) {
+                
+                if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
+                    val llmResult = openRouterService.checkContent(monitor.llmPrompt, content)
+                    if (llmResult) {
+                        sendNotification(monitor.id, "Smart Alert", "Condition met: ${monitor.llmPrompt}")
+                        message += " LLM Condition Met."
+                    } else {
+                        message += " LLM Condition NOT Met."
+                    }
+                } else {
                     sendNotification(monitor.id, "Monitor Update", "Content changed for ${monitor.name}")
                 }
             } else {
                 result = "UNCHANGED"
                 message = "No changes detected."
                 newHash = monitor.lastContentHash
-            }
-
-            // LLM Check
-            if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
-                val llmResult = openRouterService.checkContent(monitor.llmPrompt, content)
-                if (llmResult) {
-                    sendNotification(monitor.id, "Smart Alert", "Condition met: ${monitor.llmPrompt}")
-                    // Append to message
-                    // message += " LLM Condition Met." // Val cannot be reassigned
-                }
             }
 
             // Update Monitor

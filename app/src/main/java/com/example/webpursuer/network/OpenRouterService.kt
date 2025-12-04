@@ -76,4 +76,41 @@ class OpenRouterService(private val settingsRepository: SettingsRepository) {
             return false
         }
     }
+    suspend fun testConnection(apiKey: String, model: String): String {
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("HTTP-Referer", "https://github.com/example/webpursuer")
+                    .addHeader("X-Title", "WebPursuer")
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://openrouter.ai/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val api = retrofit.create(OpenRouterApi::class.java)
+
+        try {
+            val response = api.getCompletion(
+                ChatRequest(
+                    model = model,
+                    messages = listOf(
+                        Message("user", "Say hello")
+                    )
+                )
+            )
+            return response.choices.firstOrNull()?.message?.content ?: "No response content"
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()
+            return "Error: ${e.code()} - $errorBody"
+        } catch (e: Exception) {
+            return "Error: ${e.message}"
+        }
+    }
 }

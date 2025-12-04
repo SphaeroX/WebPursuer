@@ -42,7 +42,9 @@ fun HomeScreen(
     onAddMonitorClick: () -> Unit
 ) {
     val monitors by viewModel.monitors.collectAsState()
-    var selectedMonitor by remember { mutableStateOf<Monitor?>(null) }
+    var selectedMonitorId by remember { mutableStateOf<Int?>(null) }
+    
+    val selectedMonitor = monitors.find { it.id == selectedMonitorId }
 
     var showSettings by remember { mutableStateOf(false) }
 
@@ -52,7 +54,7 @@ fun HomeScreen(
         MonitorDetailScreen(
             monitor = selectedMonitor!!,
             viewModel = viewModel,
-            onBackClick = { selectedMonitor = null }
+            onBackClick = { selectedMonitorId = null }
         )
     } else {
         Scaffold(
@@ -97,7 +99,7 @@ fun HomeScreen(
                     items(monitors) { monitor ->
                         MonitorItem(
                             monitor = monitor,
-                            onClick = { selectedMonitor = monitor },
+                            onClick = { selectedMonitorId = monitor.id },
                             onDeleteClick = { viewModel.deleteMonitor(monitor) }
                         )
                     }
