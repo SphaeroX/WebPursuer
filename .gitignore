@@ -19,7 +19,7 @@ out/
 .gradle/
 build/
 */build/
-
+build*.txt
 
 # Local configuration file (sdk.dir is not checked in)
 local.properties
