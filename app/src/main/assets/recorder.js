@@ -74,38 +74,38 @@
         if (menuElement) return;
         menuElement = document.createElement('div');
         menuElement.className = 'webpursuer-menu';
-        
+
         var btnExpand = document.createElement('div');
         btnExpand.className = 'webpursuer-menu-item';
         btnExpand.innerText = 'Auswahl vergrößern';
-        btnExpand.onclick = function(e) { 
-            e.stopPropagation(); 
+        btnExpand.onclick = function (e) {
+            e.stopPropagation();
             e.preventDefault();
-            expandSelection(); 
+            expandSelection();
         };
-        
+
         var btnSimilar = document.createElement('div');
         btnSimilar.className = 'webpursuer-menu-item';
         btnSimilar.innerText = 'Ähnliches auswählen';
-        btnSimilar.onclick = function(e) { 
-            e.stopPropagation(); 
+        btnSimilar.onclick = function (e) {
+            e.stopPropagation();
             e.preventDefault();
-            selectSimilar(); 
+            selectSimilar();
         };
-        
+
         var btnConfirm = document.createElement('div');
         btnConfirm.className = 'webpursuer-menu-item';
         btnConfirm.innerText = 'Wähle dieses Element';
-        btnConfirm.onclick = function(e) { 
-            e.stopPropagation(); 
+        btnConfirm.onclick = function (e) {
+            e.stopPropagation();
             e.preventDefault();
-            confirmSelection(); 
+            confirmSelection();
         };
 
         menuElement.appendChild(btnExpand);
         menuElement.appendChild(btnSimilar);
         menuElement.appendChild(btnConfirm);
-        
+
         document.body.appendChild(menuElement);
     }
 
@@ -125,7 +125,7 @@
             el.classList.add('webpursuer-highlight');
             currentElement = el;
             showMenu(el);
-            
+
             var selector = getCssSelector(el);
             if (window.Android) {
                 window.Android.updateSelector(selector);
@@ -144,11 +144,11 @@
         var rect = el.getBoundingClientRect();
         var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-        
+
         // Position below the element
         var top = rect.bottom + scrollTop + 10;
         var left = rect.left + scrollLeft;
-        
+
         // Adjust if off screen
         if (left + menuElement.offsetWidth > window.innerWidth) {
             left = window.innerWidth - menuElement.offsetWidth - 10;
@@ -174,7 +174,7 @@
         console.log("Select similar clicked");
         // Implementing a basic "similar" check
         if (!currentElement) return;
-        
+
         // Logic to select similar elements is complex to visualize without multi-selection support in UI.
         // For now, we will just keep the current element selected.
     }
@@ -197,6 +197,23 @@
         console.log("Selection Mode Disabled");
     };
 
+    window.highlightSelector = function (selector) {
+        try {
+            var el = document.querySelector(selector);
+            if (el) {
+                updateHighlight(el);
+                // Scroll into view if needed
+                el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+            } else {
+                // Optionally remove highlight if not found, or keep last valid
+                // updateHighlight(null); 
+                console.log("Element not found for selector: " + selector);
+            }
+        } catch (e) {
+            console.error("Invalid selector: " + selector);
+        }
+    };
+
     document.addEventListener('click', function (e) {
         if (selectionMode) {
             // Check if clicking inside the menu
@@ -206,11 +223,11 @@
 
             e.preventDefault();
             e.stopPropagation();
-            
+
             updateHighlight(e.target);
             return;
         }
-        
+
         // Recording logic
         var target = e.target;
         var selector = getCssSelector(target);
@@ -225,7 +242,7 @@
         var target = e.target;
         var selector = getCssSelector(target);
         var value = target.value;
-        
+
         if (window.Android) {
             window.Android.recordInteraction("input", selector, value);
         }

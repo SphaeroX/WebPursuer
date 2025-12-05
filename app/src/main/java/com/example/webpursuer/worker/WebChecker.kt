@@ -21,7 +21,8 @@ class WebChecker(
     private val monitorDao: MonitorDao,
     private val checkLogDao: CheckLogDao,
     private val interactionDao: com.example.webpursuer.data.InteractionDao,
-    private val openRouterService: com.example.webpursuer.network.OpenRouterService
+    private val openRouterService: com.example.webpursuer.network.OpenRouterService,
+    private val settingsRepository: com.example.webpursuer.data.SettingsRepository
 ) {
 
     suspend fun checkMonitor(monitor: Monitor, now: Long) {
@@ -181,7 +182,13 @@ class WebChecker(
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    private fun sendNotification(monitorId: Int, title: String, message: String) {
+    private suspend fun sendNotification(monitorId: Int, title: String, message: String) {
+        // Check if notifications are enabled
+        val isEnabled = kotlinx.coroutines.flow.first(settingsRepository.notificationsEnabled)
+        if (!isEnabled) {
+            return
+        }
+
         val intent = android.content.Intent(context, com.example.webpursuer.MainActivity::class.java).apply {
             flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
         }

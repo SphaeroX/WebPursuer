@@ -175,13 +175,24 @@ class BrowserActivity : ComponentActivity() {
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = currentSelector,
-                                color = Color.White,
+                            TextField(
+                                value = currentSelector,
+                                onValueChange = { newSelector ->
+                                    browserViewModel.updateCurrentSelector(newSelector)
+                                    webView.evaluateJavascript("window.highlightSelector('$newSelector')", null)
+                                },
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    cursorColor = Color.White,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
                                 modifier = Modifier.weight(1f),
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodySmall
+                                textStyle = MaterialTheme.typography.bodySmall
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(

@@ -50,6 +50,31 @@ fun SettingsScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
+            val notificationsEnabled by settingsRepository.notificationsEnabled.collectAsState(initial = true)
+
+            Text("Allgemein", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Benachrichtigungen aktivieren")
+                Switch(
+                    checked = notificationsEnabled,
+                    onCheckedChange = { 
+                        scope.launch {
+                            settingsRepository.saveNotificationsEnabled(it)
+                        }
+                    }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text("OpenRouter Configuration", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
             

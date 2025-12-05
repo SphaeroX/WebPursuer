@@ -88,7 +88,15 @@ fun MonitorDetailScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("URL: ${monitor.url}", style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Selector: ${monitor.selector}", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = monitor.selector,
+                        onValueChange = { 
+                            viewModel.updateMonitor(monitor.copy(selector = it)) 
+                        },
+                        label = { Text("CSS Selector") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Interval Selection

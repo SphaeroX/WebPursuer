@@ -22,7 +22,7 @@ class WebCheckWorker(
     private val interactionDao = database.interactionDao()
     private val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
     private val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository)
-    private val webChecker = WebChecker(context.applicationContext, monitorDao, checkLogDao, interactionDao, openRouterService)
+    private val webChecker = WebChecker(context.applicationContext, monitorDao, checkLogDao, interactionDao, openRouterService, settingsRepository)
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
