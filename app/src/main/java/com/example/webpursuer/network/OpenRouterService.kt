@@ -113,4 +113,45 @@ class OpenRouterService(private val settingsRepository: SettingsRepository) {
             return "Error: ${e.message}"
         }
     }
+
+    suspend fun generateReport(prompt: String): String {
+        val apiKey = settingsRepository.apiKey.first() ?: return "Error: No API Key"
+        val model = settingsRepository.model.first()
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("HTTP-Referer", "https://github.com/example/webpursuer")
+                    .addHeader("X-Title", "WebPursuerReport")
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://openrouter.ai/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        val api = retrofit.create(OpenRouterApi::class.java)
+
+        // System prompt for the report
+        val systemPrompt = "You are a helpful assistant that summarizes changes on monitored websites. You will be given a list of changes including the website name, check time, and the change detected. Create a concise summary of what happened. If multiple updates are for the same site, group them."
+
+        try {
+            val response = api.getCompletion(
+                ChatRequest(
+                    model = model,
+                    messages = listOf(
+                        Message("system", systemPrompt),
+                        Message("user", prompt)
+                    )
+                )
+            )
+            return response.choices.firstOrNull()?.message?.content ?: "No summary available."
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return "Error generating report: ${e.message}"
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package com.example.webpursuer.data;
 
 import android.database.Cursor;
+import android.os.CancellationSignal;
 import androidx.annotation.NonNull;
 import androidx.room.CoroutinesRoom;
 import androidx.room.EntityInsertionAdapter;
@@ -163,6 +164,57 @@ public final class CheckLogDao_Impl implements CheckLogDao {
         _statement.release();
       }
     });
+  }
+
+  @Override
+  public Object getChangedLogsSince(final long since,
+      final Continuation<? super List<CheckLog>> $completion) {
+    final String _sql = "SELECT * FROM check_logs WHERE timestamp > ? AND result = 'CHANGED'";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
+    int _argIndex = 1;
+    _statement.bindLong(_argIndex, since);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<CheckLog>>() {
+      @Override
+      @NonNull
+      public List<CheckLog> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfMonitorId = CursorUtil.getColumnIndexOrThrow(_cursor, "monitorId");
+          final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
+          final int _cursorIndexOfResult = CursorUtil.getColumnIndexOrThrow(_cursor, "result");
+          final int _cursorIndexOfMessage = CursorUtil.getColumnIndexOrThrow(_cursor, "message");
+          final int _cursorIndexOfContent = CursorUtil.getColumnIndexOrThrow(_cursor, "content");
+          final List<CheckLog> _result = new ArrayList<CheckLog>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final CheckLog _item;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final int _tmpMonitorId;
+            _tmpMonitorId = _cursor.getInt(_cursorIndexOfMonitorId);
+            final long _tmpTimestamp;
+            _tmpTimestamp = _cursor.getLong(_cursorIndexOfTimestamp);
+            final String _tmpResult;
+            _tmpResult = _cursor.getString(_cursorIndexOfResult);
+            final String _tmpMessage;
+            _tmpMessage = _cursor.getString(_cursorIndexOfMessage);
+            final String _tmpContent;
+            if (_cursor.isNull(_cursorIndexOfContent)) {
+              _tmpContent = null;
+            } else {
+              _tmpContent = _cursor.getString(_cursorIndexOfContent);
+            }
+            _item = new CheckLog(_tmpId,_tmpMonitorId,_tmpTimestamp,_tmpResult,_tmpMessage,_tmpContent);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
   }
 
   @NonNull

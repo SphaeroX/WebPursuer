@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.flow.first
 
 class WebChecker(
     private val context: Context,
@@ -184,7 +185,7 @@ class WebChecker(
 
     private suspend fun sendNotification(monitorId: Int, title: String, message: String) {
         // Check if notifications are enabled
-        val isEnabled = kotlinx.coroutines.flow.first(settingsRepository.notificationsEnabled)
+        val isEnabled = settingsRepository.notificationsEnabled.first()
         if (!isEnabled) {
             return
         }

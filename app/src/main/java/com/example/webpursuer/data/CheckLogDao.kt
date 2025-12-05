@@ -10,6 +10,9 @@ interface CheckLogDao {
     @Query("SELECT * FROM check_logs WHERE monitorId = :monitorId ORDER BY timestamp DESC")
     fun getLogsForMonitor(monitorId: Int): Flow<List<CheckLog>>
 
+    @Query("SELECT * FROM check_logs WHERE timestamp > :since AND result = 'CHANGED'")
+    suspend fun getChangedLogsSince(since: Long): List<CheckLog>
+
     @Insert
     suspend fun insert(log: CheckLog)
     
