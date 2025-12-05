@@ -9,6 +9,8 @@ import android.widget.ImageButton
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -51,13 +53,16 @@ class BrowserActivity : ComponentActivity() {
     @Composable
     fun BrowserScreen() {
         var url by remember { mutableStateOf("https://google.com") }
-        // isRecording removed
         val isSelecting by browserViewModel.isSelecting.collectAsState()
         val currentSelector by browserViewModel.currentSelector.collectAsState()
         var monitorName by remember { mutableStateOf("") }
         
         val selectedSelector by browserViewModel.selectedSelector.collectAsState()
         var showSaveDialog by remember { mutableStateOf(false) }
+
+        // Test Dialog State
+        var showTestDialog by remember { mutableStateOf(false) }
+        var testContent by remember { mutableStateOf("") }
 
         LaunchedEffect(selectedSelector) {
             if (selectedSelector != null) {
@@ -72,6 +77,31 @@ class BrowserActivity : ComponentActivity() {
             } else {
                 webView.evaluateJavascript("window.disableSelectionMode()", null)
             }
+        }
+
+        if (showTestDialog) {
+            AlertDialog(
+                onDismissRequest = { showTestDialog = false },
+                title = { Text("Content Preview") },
+                text = {
+                    Box(
+                        modifier = Modifier
+                            .heightIn(max = 300.dp)
+                            .fillMaxWidth()
+                    ) {
+                        val scrollState = rememberScrollState()
+                        Text(
+                            text = testContent,
+                            modifier = Modifier.verticalScroll(scrollState)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showTestDialog = false }) {
+                        Text("Close")
+                    }
+                }
+            )
         }
 
         if (showSaveDialog && selectedSelector != null) {
@@ -96,7 +126,6 @@ class BrowserActivity : ComponentActivity() {
                 },
                 confirmButton = {
                     Button(onClick = {
-                        // Save Monitor
                         monitorViewModel.addMonitor(
                             Monitor(
                                 url = webView.url ?: url,
@@ -105,7 +134,7 @@ class BrowserActivity : ComponentActivity() {
                             ),
                             browserViewModel.getRecordedInteractions().mapIndexed { index, data ->
                                 com.example.webpursuer.data.Interaction(
-                                    monitorId = 0, // Will be set in ViewModel
+                                    monitorId = 0,
                                     type = data.type,
                                     selector = data.selector,
                                     value = data.value,
@@ -117,7 +146,7 @@ class BrowserActivity : ComponentActivity() {
                         browserViewModel.clearSelection()
                         browserViewModel.setSelectionMode(false)
                         browserViewModel.clearInteractions()
-                        finish() // Go back to Home
+                        finish() 
                     }) {
                         Text("Save")
                     }
@@ -137,44 +166,61 @@ class BrowserActivity : ComponentActivity() {
         Scaffold(
             topBar = {
                 Column {
-                    TopAppBar(
-                        title = { 
-                            TextField(
-                                value = url, 
-                                onValueChange = { url = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            ) 
-                        },
-                        actions = {
-                            IconButton(onClick = { 
-                                webView.loadUrl(url) 
-                            }) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Go")
-                            }
-                            
-                            IconButton(onClick = { 
-                                browserViewModel.toggleSelectionMode()
-                                // Script injection happens in LaunchedEffect or onPageFinished
-                                if (!isSelecting) injectRecorderScript() 
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Check, 
-                                    contentDescription = "Select",
-                                    tint = if (isSelecting) Color.Green else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                    // Custom Slimmer URL Bar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { finish() }) { 
+                           Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
-                    )
+                        
+                        TextField(
+                            value = url, 
+                            onValueChange = { url = it },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = MaterialTheme.shapes.small
+                        )
+                        
+                        IconButton(onClick = { 
+                            webView.loadUrl(url) 
+                        }) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Go")
+                        }
+                        
+                        IconButton(onClick = { 
+                            browserViewModel.toggleSelectionMode()
+                            if (!isSelecting) injectRecorderScript() 
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Check, 
+                                contentDescription = "Select",
+                                tint = if (isSelecting) Color(0xFF008f39) else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                     
                     if (isSelecting) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color.Black)
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .background(Color.Black.copy(alpha = 0.8f))
+                                .padding(8.dp)
                         ) {
+                            // Row 1: Selector
                             TextField(
                                 value = currentSelector,
                                 onValueChange = { newSelector ->
@@ -187,25 +233,87 @@ class BrowserActivity : ComponentActivity() {
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White,
                                     cursorColor = Color.White,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
+                                    focusedIndicatorColor = Color.White,
+                                    unfocusedIndicatorColor = Color.White
                                 ),
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.fillMaxWidth(),
                                 maxLines = 1,
-                                textStyle = MaterialTheme.typography.bodySmall
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                                placeholder = { Text("CSS Selector", color = Color.Gray) }
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = { 
-                                    if (currentSelector.isNotEmpty()) {
-                                        browserViewModel.onElementSelected(currentSelector)
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF008f39)),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                modifier = Modifier.height(36.dp)
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Row 2: Buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Auswählen", style = MaterialTheme.typography.labelMedium)
+                                Row {
+                                    // Plus Button (Expand/Parent)
+                                    Button(
+                                        onClick = { webView.evaluateJavascript("window.selectParent()", null) },
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = Modifier.size(40.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                                    ) {
+                                        Text("+", style = MaterialTheme.typography.titleMedium)
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    // Minus Button (Shrink/Child)
+                                    Button(
+                                        onClick = { webView.evaluateJavascript("window.selectChild()", null) },
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = Modifier.size(40.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                                    ) {
+                                        Text("-", style = MaterialTheme.typography.titleMedium)
+                                    }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    // Test Button
+                                    Button(
+                                        onClick = { 
+                                            webView.evaluateJavascript("window.getTextContent()") { value ->
+                                                val cleanValue = value?.let { 
+                                                    if (it == "null") "" 
+                                                    else if (it.startsWith("\"") && it.endsWith("\"")) {
+                                                        it.substring(1, it.length - 1)
+                                                            .replace("\\n", "\n")
+                                                            .replace("\\\"", "\"")
+                                                            .replace("\\\\", "\\")
+                                                    } else it
+                                                } ?: ""
+                                                
+                                                testContent = cleanValue
+                                                showTestDialog = true
+                                            }
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 8.dp),
+                                        modifier = Modifier.height(40.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color.Blue)
+                                    ) {
+                                        Text("Test")
+                                    }
+                                }
+
+                                // Confirm Button
+                                Button(
+                                    onClick = { 
+                                        if (currentSelector.isNotEmpty()) {
+                                            browserViewModel.onElementSelected(currentSelector)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF008f39)),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    modifier = Modifier.height(40.dp)
+                                ) {
+                                    Text("Auswählen")
+                                }
                             }
                         }
                     }
@@ -231,7 +339,7 @@ class BrowserActivity : ComponentActivity() {
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
-                                injectRecorderScript() // Always inject to ensure functions are available
+                                injectRecorderScript()
                                 if (isSelecting) {
                                     view?.evaluateJavascript("window.enableSelectionMode()", null)
                                 } else {
