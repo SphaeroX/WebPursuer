@@ -14,5 +14,6 @@ data class Monitor(
     val lastContentHash: String? = null,
     val enabled: Boolean = true,
     val llmPrompt: String? = null,
-    val llmEnabled: Boolean = false
+    val llmEnabled: Boolean = false,
+    val notificationsEnabled: Boolean = true
 )

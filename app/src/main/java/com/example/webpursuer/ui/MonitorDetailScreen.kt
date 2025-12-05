@@ -128,6 +128,22 @@ fun MonitorDetailScreen(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    // Notification Toggle
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Send Notifications", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = monitor.notificationsEnabled,
+                            onCheckedChange = {
+                                viewModel.updateMonitor(monitor.copy(notificationsEnabled = it))
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     // LLM Configuration
                     Text("Intelligent Monitoring (LLM)", style = MaterialTheme.typography.titleSmall)
                     Spacer(modifier = Modifier.height(8.dp))

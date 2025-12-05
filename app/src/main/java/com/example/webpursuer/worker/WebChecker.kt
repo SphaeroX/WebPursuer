@@ -184,9 +184,15 @@ class WebChecker(
     }
 
     private suspend fun sendNotification(monitorId: Int, title: String, message: String) {
-        // Check if notifications are enabled
-        val isEnabled = settingsRepository.notificationsEnabled.first()
-        if (!isEnabled) {
+        // Check if notifications are enabled globally
+        val isGloballyEnabled = settingsRepository.notificationsEnabled.first()
+        if (!isGloballyEnabled) {
+            return
+        }
+
+        // Check if notifications are enabled for this monitor
+        val monitor = monitorDao.getById(monitorId)
+        if (monitor != null && !monitor.notificationsEnabled) {
             return
         }
 
