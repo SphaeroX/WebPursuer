@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.Calendar
 
 class ReportWorker(
     context: Context,
@@ -34,6 +35,32 @@ class ReportWorker(
             val report = database.reportDao().getById(reportId)
             if (report == null || !report.enabled) {
                 return Result.success()
+            }
+            
+            // Check Schedule Logic
+            if (report.scheduleType == "SPECIFIC_TIME") {
+                val calendar = Calendar.getInstance()
+                // Calendar.SUNDAY = 1, MONDAY = 2 ... SATURDAY = 7
+                // Our bitmask: 0=Mon, 1=Tue... 6=Sun? 
+                // Let's assume Standard:
+                // Bit 0 (1): Monday
+                // Bit 1 (2): Tuesday
+                // ...
+                // Bit 6 (64): Sunday
+                
+                // Map Calendar day to our bit index (0-6)
+                // Calendar.MONDAY (2) -> 0
+                // Calendar.TUESDAY (3) -> 1
+                // ...
+                // Calendar.SUNDAY (1) -> 6
+                val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+                val bitIndex = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - 2
+                
+                val mask = 1 shl bitIndex
+                if ((report.scheduleDays and mask) == 0) {
+                   // Not scheduled for today
+                   return Result.success()
+                }
             }
 
             val lastTime = report.lastRunTime

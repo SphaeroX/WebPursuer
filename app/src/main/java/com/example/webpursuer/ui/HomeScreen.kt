@@ -177,7 +177,7 @@ fun HomeScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("New Daily Report")
+                                Text("New Report")
                             }
                         }
                     },

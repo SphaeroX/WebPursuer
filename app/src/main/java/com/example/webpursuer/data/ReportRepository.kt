@@ -36,7 +36,7 @@ class ReportRepository(private val context: Context, private val reportDao: Repo
     }
 
     private fun scheduleReportWorker(report: Report) {
-        val workManager = WorkManager.getInstance(context) // ReportWorker needs to be adjusted!
+        val workManager = WorkManager.getInstance(context)
         val workName = "ReportWorker_${report.id}"
 
         if (!report.enabled) {
@@ -54,15 +54,33 @@ class ReportRepository(private val context: Context, private val reportDao: Repo
         }
 
         if (target.before(now)) {
-            target.add(Calendar.DAY_OF_YEAR, 1)
+            // For Interval: If start time passed, we might want to start "next interval slot" or just now + interval?
+            // "Specific Time" logic: Next day.
+            // "Interval" logic: If user says start at 8:00 and run every 3h, and it's 10:00.
+            // 8:00 passed. Next run should be 11:00.
+            if (report.scheduleType == "INTERVAL") {
+                 val intervalMillis = report.intervalHours * 60 * 60 * 1000L
+                 while (target.before(now)) {
+                     target.timeInMillis += intervalMillis
+                 }
+            } else {
+                target.add(Calendar.DAY_OF_YEAR, 1)
+            }
         }
-
+        
         val initialDelay = target.timeInMillis - now.timeInMillis
-
-        val workRequest = PeriodicWorkRequestBuilder<ReportWorker>(24, TimeUnit.HOURS)
-            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-            .setInputData(workDataOf("report_id" to report.id))
-            .build()
+        
+        val workRequest = if (report.scheduleType == "INTERVAL") {
+             PeriodicWorkRequestBuilder<ReportWorker>(report.intervalHours.toLong(), TimeUnit.HOURS)
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                .setInputData(workDataOf("report_id" to report.id))
+                .build()
+        } else {
+             PeriodicWorkRequestBuilder<ReportWorker>(24, TimeUnit.HOURS)
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                .setInputData(workDataOf("report_id" to report.id))
+                .build()
+        }
 
         workManager.enqueueUniquePeriodicWork(
             workName,

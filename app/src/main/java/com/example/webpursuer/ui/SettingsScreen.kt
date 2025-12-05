@@ -75,78 +75,6 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(24.dp))
 
-            // REPORTS SECTION
-            val reportEnabled by settingsRepository.reportEnabled.collectAsState(initial = false)
-            val reportTimeHour by settingsRepository.reportTimeHour.collectAsState(initial = 8)
-            val reportSelection by settingsRepository.reportMonitorSelection.collectAsState(initial = emptySet())
-            var showMonitorDialog by remember { mutableStateOf(false) }
-
-            Text("Daily Reports (LLM)", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Enable Daily Reports")
-                Switch(
-                    checked = reportEnabled,
-                    onCheckedChange = { enabled ->
-                        scope.launch {
-                            settingsRepository.saveReportEnabled(enabled)
-                            // Schedule logic handled below in Save or via a side effect? 
-                            // Creating the worker request here is cleaner for IMMEDIATE feedback, 
-                            // but usually we wait for "Save". 
-                            // However, let's keep it simple: Save handles persistence, 
-                            // but we also need to trigger WorkManager update.
-                        }
-                    }
-                )
-            }
-
-            if (reportEnabled) {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "Report Time: ${String.format("%02d:00", reportTimeHour)}",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Slider(
-                    value = reportTimeHour.toFloat(),
-                    onValueChange = { scope.launch { settingsRepository.saveReportTimeHour(it.toInt()) } },
-                    valueRange = 0f..23f,
-                    steps = 22
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                OutlinedButton(
-                    onClick = { showMonitorDialog = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (reportSelection.isEmpty()) "Select Websites (All)" else "Select Websites (${reportSelection.size})")
-                }
-            }
-
-            if (showMonitorDialog) {
-                ReportSettingsDialog(
-                    monitorDao = com.example.webpursuer.data.AppDatabase.getDatabase(context).monitorDao(),
-                    initialSelection = reportSelection,
-                    onDismiss = { showMonitorDialog = false },
-                    onConfirm = { selection ->
-                        scope.launch {
-                            settingsRepository.saveReportMonitorSelection(selection)
-                        }
-                        showMonitorDialog = false
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(24.dp))
-
             Text("OpenRouter Configuration", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -214,10 +142,6 @@ fun SettingsScreen(
                     scope.launch {
                         settingsRepository.saveApiKey(apiKeyInput)
                         settingsRepository.saveModel(modelInput)
-                        
-                        // Reschedule Report Worker
-                        scheduleReportWorker(context, reportEnabled, reportTimeHour)
-                        
                         onBackClick()
                     }
                 },
@@ -227,36 +151,4 @@ fun SettingsScreen(
             }
         }
     }
-}
-
-fun scheduleReportWorker(context: android.content.Context, enabled: Boolean, hour: Int) {
-    if (!enabled) {
-        androidx.work.WorkManager.getInstance(context).cancelUniqueWork("ReportWorker")
-        return
-    }
-
-    val now = java.util.Calendar.getInstance()
-    val target = java.util.Calendar.getInstance().apply {
-        set(java.util.Calendar.HOUR_OF_DAY, hour)
-        set(java.util.Calendar.MINUTE, 0)
-        set(java.util.Calendar.SECOND, 0)
-        set(java.util.Calendar.MILLISECOND, 0)
-    }
-
-    // If target is before now, schedule for tomorrow
-    if (target.before(now)) {
-        target.add(java.util.Calendar.DAY_OF_YEAR, 1)
-    }
-
-    val initialDelay = target.timeInMillis - now.timeInMillis
-
-    val workRequest = androidx.work.PeriodicWorkRequestBuilder<com.example.webpursuer.worker.ReportWorker>(24, java.util.concurrent.TimeUnit.HOURS)
-        .setInitialDelay(initialDelay, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .build()
-
-    androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-        "ReportWorker",
-        androidx.work.ExistingPeriodicWorkPolicy.UPDATE, // Update to apply new time
-        workRequest
-    )
 }

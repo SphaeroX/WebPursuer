@@ -87,8 +87,20 @@ fun ReportItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = report.name, style = MaterialTheme.typography.titleMedium)
+                
+                val scheduleText = if (report.scheduleType == "INTERVAL") {
+                    "Every ${report.intervalHours} hours (from ${String.format(Locale.getDefault(), "%02d:%02d", report.scheduleHour, report.scheduleMinute)})"
+                } else {
+                    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                    val activeDays = days.filterIndexed { index, _ ->
+                         (report.scheduleDays and (1 shl index)) != 0
+                    }
+                    val daysText = if (activeDays.size == 7) "Daily" else activeDays.joinToString(", ")
+                    "$daysText at ${String.format(Locale.getDefault(), "%02d:%02d", report.scheduleHour, report.scheduleMinute)}"
+                }
+                
                 Text(
-                    text = "Scheduled: ${String.format(Locale.getDefault(), "%02d:%02d", report.scheduleHour, report.scheduleMinute)}",
+                    text = scheduleText,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (report.customPrompt.isNotBlank()) {

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -35,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.webpursuer.data.Report
 import java.util.Locale
@@ -49,8 +53,13 @@ fun ReportEditScreen(
 ) {
     var name by remember { mutableStateOf(report?.name ?: "") }
     var userPrompt by remember { mutableStateOf(report?.customPrompt ?: "") }
-    var selectedHour by remember { mutableIntStateOf(report?.scheduleHour ?: 8) }
+    
+    // Scheduling State
+    var scheduleType by remember { mutableStateOf(report?.scheduleType ?: "SPECIFIC_TIME") }
+    var selectedHour by remember { mutableIntStateOf(report?.scheduleHour ?: 8) } // Start time or Daily time
     var selectedMinute by remember { mutableIntStateOf(report?.scheduleMinute ?: 0) }
+    var scheduleDays by remember { mutableIntStateOf(report?.scheduleDays ?: 127) } // Default all days
+    var intervalHours by remember { mutableStateOf((report?.intervalHours ?: 24).toString()) }
 
     // Monitors selection
     val allMonitors by monitorViewModel.monitors.collectAsState()
@@ -108,20 +117,87 @@ fun ReportEditScreen(
                 placeholder = { Text("e.g., Summarize the changes as a bulleted list.") }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Schedule Type", style = MaterialTheme.typography.titleMedium)
+            
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Message Time: ${String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute)}",
-                    style = MaterialTheme.typography.bodyLarge
+                RadioButton(
+                    selected = scheduleType == "SPECIFIC_TIME",
+                    onClick = { scheduleType = "SPECIFIC_TIME" }
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                Button(onClick = { timePickerDialog.show() }) {
-                    Text("Set Time")
+                Text("Specific Time (Weekly/Daily)")
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                RadioButton(
+                    selected = scheduleType == "INTERVAL",
+                    onClick = { scheduleType = "INTERVAL" }
+                )
+                Text("Interval")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (scheduleType == "SPECIFIC_TIME") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Time: ${String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute)}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Button(onClick = { timePickerDialog.show() }) {
+                        Text("Set Time")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Repeat on:", style = MaterialTheme.typography.bodyMedium)
+                // Day Selection
+                val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                // Bitmask: 0=Mon, ... 6=Sun
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                     days.forEachIndexed { index, dayName ->
+                         val mask = 1 shl index
+                         val isSelected = (scheduleDays and mask) != 0
+                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                             Checkbox(
+                                 checked = isSelected,
+                                 onCheckedChange = { checked ->
+                                     scheduleDays = if (checked) {
+                                         scheduleDays or mask
+                                     } else {
+                                         scheduleDays and mask.inv()
+                                     }
+                                 }
+                             )
+                             Text(dayName, style = MaterialTheme.typography.labelSmall)
+                         }
+                     }
+                }
+            } else {
+                // Interval
+                OutlinedTextField(
+                    value = intervalHours,
+                    onValueChange = { if (it.all { char -> char.isDigit() }) intervalHours = it },
+                    label = { Text("Interval (Hours)") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text("Start first run at:", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "${String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute)}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Button(onClick = { timePickerDialog.show() }) {
+                        Text("Set Start Time")
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+
+            Spacer(modifier = Modifier.height(24.dp))
             Text("Select Websites to Monitor:", style = MaterialTheme.typography.titleMedium)
             
             Column {
@@ -154,24 +230,36 @@ fun ReportEditScreen(
 
             Button(
                 onClick = {
+                    val intHours = intervalHours.toIntOrNull() ?: 24
+                    
                     if (report == null) {
-                        reportViewModel.addReport(name, userPrompt, selectedHour, selectedMinute, selectedMonitorIds)
+                        reportViewModel.addReport(
+                            name = name,
+                            customPrompt = userPrompt,
+                            scheduleType = scheduleType,
+                            scheduleHour = selectedHour,
+                            scheduleMinute = selectedMinute,
+                            scheduleDays = scheduleDays,
+                            intervalHours = intHours,
+                            monitorIds = selectedMonitorIds
+                        )
                     } else {
-                        // We need to pass the updated object but we only have updateReport(report, ids) helper in VM?
-                        // Actually the VM helper updateReport takes report and ids.
-                        // But wait, the report object passed to VM update needs to be the updated one for name/prompt/time.
                         val updatedReport = report.copy(
                             name = name,
                             customPrompt = userPrompt,
+                            scheduleType = scheduleType,
                             scheduleHour = selectedHour,
-                            scheduleMinute = selectedMinute
+                            scheduleMinute = selectedMinute,
+                            scheduleDays = scheduleDays,
+                            intervalHours = intHours,
+                            monitorIds = selectedMonitorIds.joinToString(",")
                         )
-                        reportViewModel.updateReport(updatedReport, selectedMonitorIds)
+                        reportViewModel.updateReportFull(updatedReport)
                     }
                     onBackClick()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && (scheduleDays != 0 || scheduleType == "INTERVAL")
             ) {
                 Text("Save Report")
             }

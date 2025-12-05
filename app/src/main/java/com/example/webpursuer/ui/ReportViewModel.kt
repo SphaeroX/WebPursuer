@@ -24,14 +24,26 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     }
 
-    fun addReport(name: String, customPrompt: String, hour: Int, minute: Int, monitorIds: Set<Int>) {
+    fun addReport(
+        name: String, 
+        customPrompt: String, 
+        scheduleType: String,
+        scheduleHour: Int, 
+        scheduleMinute: Int, 
+        scheduleDays: Int, // Bitmask
+        intervalHours: Int,
+        monitorIds: Set<Int>
+    ) {
         viewModelScope.launch {
             val monitorIdsStr = monitorIds.joinToString(",")
             val report = Report(
                 name = name,
                 customPrompt = customPrompt,
-                scheduleHour = hour,
-                scheduleMinute = minute,
+                scheduleType = scheduleType,
+                scheduleHour = scheduleHour,
+                scheduleMinute = scheduleMinute,
+                scheduleDays = scheduleDays,
+                intervalHours = intervalHours,
                 monitorIds = monitorIdsStr,
                 enabled = true
             )
@@ -44,6 +56,12 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
             val monitorIdsStr = monitorIds.joinToString(",")
             val updatedReport = report.copy(monitorIds = monitorIdsStr)
             repository.updateReport(updatedReport)
+        }
+    }
+    
+    fun updateReportFull(report: Report) {
+        viewModelScope.launch {
+            repository.updateReport(report)
         }
     }
     
