@@ -5,11 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Monitor::class, CheckLog::class, Interaction::class], version = 3)
+@Database(entities = [Monitor::class, CheckLog::class, Interaction::class, Report::class], version = 4)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun monitorDao(): MonitorDao
     abstract fun checkLogDao(): CheckLogDao
     abstract fun interactionDao(): InteractionDao
+    abstract fun reportDao(): ReportDao
 
     companion object {
         @Volatile

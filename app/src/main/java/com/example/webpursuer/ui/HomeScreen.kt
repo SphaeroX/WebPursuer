@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,72 +39,155 @@ import com.example.webpursuer.data.Monitor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: MonitorViewModel = viewModel(),
+    monitorViewModel: MonitorViewModel = viewModel(),
+    reportViewModel: ReportViewModel = viewModel(),
     onAddMonitorClick: () -> Unit
 ) {
-    val monitors by viewModel.monitors.collectAsState()
+    val monitors by monitorViewModel.monitors.collectAsState()
     var selectedMonitorId by remember { mutableStateOf<Int?>(null) }
     
     val selectedMonitor = monitors.find { it.id == selectedMonitorId }
 
+    // Navigation States
     var showSettings by remember { mutableStateOf(false) }
+    var showReportEdit by remember { mutableStateOf(false) }
+    var selectedReportForEdit by remember { mutableStateOf<com.example.webpursuer.data.Report?>(null) }
+    
+    // Tab State
+    var selectedTab by remember { mutableIntStateOf(0) } // 0 = Monitors, 1 = Reports
+
+    // FAB Dialog State
+    var showAddDialog by remember { mutableStateOf(false) }
 
     if (showSettings) {
         SettingsScreen(onBackClick = { showSettings = false })
+    } else if (showReportEdit) {
+        ReportEditScreen(
+            report = selectedReportForEdit,
+            reportViewModel = reportViewModel,
+            monitorViewModel = monitorViewModel,
+            onBackClick = { 
+                showReportEdit = false 
+                selectedReportForEdit = null
+            }
+        )
     } else if (selectedMonitor != null) {
         MonitorDetailScreen(
             monitor = selectedMonitor!!,
-            viewModel = viewModel,
+            viewModel = monitorViewModel,
             onBackClick = { selectedMonitorId = null }
         )
     } else {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("WebPursuer") },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    ),
-                    actions = {
-                        IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                Column {
+                    TopAppBar(
+                        title = { Text("WebPursuer") },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        actions = {
+                            IconButton(onClick = { showSettings = true }) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            }
                         }
-                    }
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(onClick = onAddMonitorClick) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Monitor")
-                }
-            }
-        ) { innerPadding ->
-            if (monitors.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("No monitors yet. Add one!")
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(monitors) { monitor ->
-                        MonitorItem(
-                            monitor = monitor,
-                            onClick = { selectedMonitorId = monitor.id },
-                            onDeleteClick = { viewModel.deleteMonitor(monitor) }
+                    )
+                    androidx.compose.material3.TabRow(selectedTabIndex = selectedTab) {
+                        androidx.compose.material3.Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("Monitors") }
+                        )
+                        androidx.compose.material3.Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("Reports") }
                         )
                     }
                 }
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add")
+                }
+            }
+        ) { innerPadding ->
+            if (selectedTab == 0) {
+                // Monitor List
+                if (monitors.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("No monitors yet. Add one!")
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(monitors) { monitor ->
+                            MonitorItem(
+                                monitor = monitor,
+                                onClick = { selectedMonitorId = monitor.id },
+                                onDeleteClick = { monitorViewModel.deleteMonitor(monitor) }
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Report List
+                ReportList(
+                    viewModel = reportViewModel,
+                    onEditClick = { report ->
+                        selectedReportForEdit = report
+                        showReportEdit = true
+                    },
+                    innerPadding = innerPadding
+                )
+            }
+
+            if (showAddDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showAddDialog = false },
+                    title = { Text("Create New") },
+                    text = {
+                        Column {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    showAddDialog = false
+                                    onAddMonitorClick()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("New Website Monitor")
+                            }
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    showAddDialog = false
+                                    selectedReportForEdit = null
+                                    showReportEdit = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("New Daily Report")
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = { showAddDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
         }
     }

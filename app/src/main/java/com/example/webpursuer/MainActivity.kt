@@ -18,9 +18,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                val viewModel: MonitorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                val monitorViewModel: MonitorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                val reportViewModel: com.example.webpursuer.ui.ReportViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                 HomeScreen(
-                    viewModel = viewModel,
+                    monitorViewModel = monitorViewModel,
+                    reportViewModel = reportViewModel,
                     onAddMonitorClick = {
                         val intent = android.content.Intent(this, com.example.webpursuer.ui.BrowserActivity::class.java)
                         startActivity(intent)

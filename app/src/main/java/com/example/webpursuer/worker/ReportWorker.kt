@@ -25,12 +25,18 @@ class ReportWorker(
 
     override suspend fun doWork(): Result {
         try {
-            val enabled = settingsRepository.reportEnabled.first()
-            if (!enabled) {
+            val reportId = inputData.getInt("report_id", -1)
+            if (reportId == -1) {
+                // Fallback for legacy global worker if still active, or error
+                return Result.failure()
+            }
+
+            val report = database.reportDao().getById(reportId)
+            if (report == null || !report.enabled) {
                 return Result.success()
             }
 
-            val lastTime = settingsRepository.lastReportTime.first()
+            val lastTime = report.lastRunTime
             
             // Default to 24 hours ago if never run
             val since = if (lastTime == 0L) {
@@ -42,36 +48,40 @@ class ReportWorker(
             val logs = checkLogDao.getChangedLogsSince(since)
             
             // Filter by selected monitors
-            val selectedMonitors = settingsRepository.reportMonitorSelection.first()
-            val filteredLogs = if (selectedMonitors.isEmpty()) {
-                logs // If none selected, assume all (or maybe user wants none? Let's assume all for now as "Standard")
+            val selectedMonitorIdsStr = report.monitorIds
+            val filteredLogs = if (selectedMonitorIdsStr.isEmpty()) {
+                logs // If empty, assume all
             } else {
-                logs.filter { selectedMonitors.contains(it.monitorId.toString()) }
+                val ids = selectedMonitorIdsStr.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+                logs.filter { ids.contains(it.monitorId) }
             }
 
             if (filteredLogs.isEmpty()) {
-                // No changes, maybe just update time? Or do nothing.
-                // Let's update time so we don't report "no changes" for 100 days at once later.
-                settingsRepository.saveLastReportTime(System.currentTimeMillis())
+                // Update time even if empty to avoid backlog
+                database.reportDao().update(report.copy(lastRunTime = System.currentTimeMillis()))
                 return Result.success()
             }
 
             // Build Prompt
             val sb = StringBuilder()
+            // Add custom instructions if present
+            if (report.customPrompt.isNotBlank()) {
+                sb.append("Instruction: ${report.customPrompt}\n\n")
+            } else {
+                sb.append("Please summarize these changes for me.\n\n")
+            }
+
             sb.append("Here is the list of changes detected since ${SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(since))}:\n\n")
             
-            // We need monitor names. Group by monitor ID
             val grouped = filteredLogs.groupBy { it.monitorId }
             
             for ((monitorId, montiorLogs) in grouped) {
-                // monitorId is key, which is int
                 val monitor = monitorDao.getById(monitorId)
                 if (monitor != null) {
                     sb.append("Website: ${monitor.name} (${monitor.url})\n")
                     for (log in montiorLogs) {
                         sb.append("- At ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(log.timestamp))}: ${log.message}\n")
                         if (!log.content.isNullOrBlank()) {
-                            // Maybe truncate content if too long?
                             val contentPreview = log.content.take(200).replace("\n", " ")
                             sb.append("  Content snippet: $contentPreview...\n")
                         }
@@ -80,13 +90,11 @@ class ReportWorker(
                 }
             }
 
-            sb.append("\nPlease summarize these changes for me.")
+            val generatedReport = openRouterService.generateReport(sb.toString())
 
-            val report = openRouterService.generateReport(sb.toString())
-
-            sendReportNotification(report)
+            sendReportNotification(report.name, generatedReport)
             
-            settingsRepository.saveLastReportTime(System.currentTimeMillis())
+            database.reportDao().update(report.copy(lastRunTime = System.currentTimeMillis()))
             
             return Result.success()
 
@@ -96,7 +104,7 @@ class ReportWorker(
         }
     }
     
-    private fun sendReportNotification(report: String) {
+    private fun sendReportNotification(title: String, reportContent: String) {
         val intent = android.content.Intent(applicationContext, com.example.webpursuer.MainActivity::class.java).apply {
             flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -106,9 +114,9 @@ class ReportWorker(
 
         val builder = androidx.core.app.NotificationCompat.Builder(applicationContext, "web_monitor_channel")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Daily WebPursuer Report")
-            .setContentText(report.take(100) + "...") // Preview
-            .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(report))
+            .setContentTitle("Report: $title")
+            .setContentText(reportContent.take(100) + "...")
+            .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(reportContent))
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -119,7 +127,7 @@ class ReportWorker(
                     android.Manifest.permission.POST_NOTIFICATIONS
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             ) {
-                notify(9999, builder.build()) // Fixed ID for report
+                notify(System.currentTimeMillis().toInt(), builder.build()) // Unique ID per notification
             }
         }
     }
