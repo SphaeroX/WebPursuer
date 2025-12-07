@@ -117,9 +117,18 @@ class ReportWorker(
                 }
             }
 
-            val generatedReport = openRouterService.generateReport(sb.toString())
+            val generatedReportContent = openRouterService.generateReport(sb.toString())
+            
+            // Save to database
+            val generatedReport = com.example.webpursuer.data.GeneratedReport(
+                reportId = report.id,
+                timestamp = System.currentTimeMillis(),
+                content = generatedReportContent,
+                summary = generatedReportContent.take(100) + "..."
+            )
+            database.generatedReportDao().insert(generatedReport)
 
-            sendReportNotification(report.name, generatedReport)
+            sendReportNotification(report.name)
             
             database.reportDao().update(report.copy(lastRunTime = System.currentTimeMillis()))
             
@@ -131,7 +140,7 @@ class ReportWorker(
         }
     }
     
-    private fun sendReportNotification(title: String, reportContent: String) {
+    private fun sendReportNotification(title: String) {
         val intent = android.content.Intent(applicationContext, com.example.webpursuer.MainActivity::class.java).apply {
             flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -141,9 +150,8 @@ class ReportWorker(
 
         val builder = androidx.core.app.NotificationCompat.Builder(applicationContext, "web_monitor_channel")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Report: $title")
-            .setContentText(reportContent.take(100) + "...")
-            .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(reportContent))
+            .setContentTitle("New Report Available: $title")
+            .setContentText("Tap to view the latest report.")
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)

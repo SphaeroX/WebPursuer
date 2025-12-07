@@ -19,7 +19,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -120,20 +123,42 @@ fun ReportEditScreen(
             Spacer(modifier = Modifier.height(24.dp))
             Text("Schedule Type", style = MaterialTheme.typography.titleMedium)
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = scheduleType == "SPECIFIC_TIME",
-                    onClick = { scheduleType = "SPECIFIC_TIME" }
+            // Schedule Type Dropdown
+            val options = listOf("Specific Time (Weekly/Daily)" to "SPECIFIC_TIME", "Interval" to "INTERVAL")
+            val selectedOptionText = options.find { it.second == scheduleType }?.first ?: options[0].first
+            var expanded by remember { mutableStateOf(false) }
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth(),
+                    readOnly = true,
+                    value = selectedOptionText,
+                    onValueChange = {},
+                    label = { Text("Schedule Type") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                 )
-                Text("Specific Time (Weekly/Daily)")
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                RadioButton(
-                    selected = scheduleType == "INTERVAL",
-                    onClick = { scheduleType = "INTERVAL" }
-                )
-                Text("Interval")
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                ) {
+                    options.forEach { selectionOption ->
+                        DropdownMenuItem(
+                            text = { Text(selectionOption.first) },
+                            onClick = {
+                                scheduleType = selectionOption.second
+                                expanded = false
+                            },
+                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))

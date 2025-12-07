@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ import java.util.Locale
 fun ReportList(
     viewModel: ReportViewModel,
     onEditClick: (Report) -> Unit,
+    onHistoryClick: (Report) -> Unit,
     innerPadding: PaddingValues
 ) {
     val reports by viewModel.reports.collectAsState()
@@ -58,6 +60,7 @@ fun ReportList(
                 ReportItem(
                     report = report,
                     onEditClick = { onEditClick(report) },
+                    onHistoryClick = { onHistoryClick(report) },
                     onDeleteClick = { viewModel.deleteReport(report) },
                     onToggle = { enabled -> viewModel.toggleReport(report, enabled) }
                 )
@@ -71,6 +74,7 @@ fun ReportList(
 fun ReportItem(
     report: Report,
     onEditClick: () -> Unit,
+    onHistoryClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onToggle: (Boolean) -> Unit
 ) {
@@ -116,6 +120,9 @@ fun ReportItem(
                     checked = report.enabled,
                     onCheckedChange = onToggle
                 )
+                IconButton(onClick = onHistoryClick) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History")
+                }
                 IconButton(onClick = onDeleteClick) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete")
                 }

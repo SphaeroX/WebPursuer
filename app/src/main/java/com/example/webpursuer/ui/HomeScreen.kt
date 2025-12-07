@@ -41,6 +41,7 @@ import com.example.webpursuer.data.Monitor
 fun HomeScreen(
     monitorViewModel: MonitorViewModel = viewModel(),
     reportViewModel: ReportViewModel = viewModel(),
+    generatedReportRepository: com.example.webpursuer.data.GeneratedReportRepository,
     onAddMonitorClick: () -> Unit
 ) {
     val monitors by monitorViewModel.monitors.collectAsState()
@@ -53,6 +54,9 @@ fun HomeScreen(
     var showReportEdit by remember { mutableStateOf(false) }
     var selectedReportForEdit by remember { mutableStateOf<com.example.webpursuer.data.Report?>(null) }
     
+    var showReportHistory by remember { mutableStateOf<Int?>(null) } // Report ID
+    var showReportContent by remember { mutableStateOf<Int?>(null) } // GeneratedReport ID
+    
     // Tab State
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = Monitors, 1 = Reports
 
@@ -61,6 +65,19 @@ fun HomeScreen(
 
     if (showSettings) {
         SettingsScreen(onBackClick = { showSettings = false })
+    } else if (showReportContent != null) {
+        ReportContentScreen(
+            generatedReportId = showReportContent!!,
+            repository = generatedReportRepository,
+            onNavigateBack = { showReportContent = null }
+        )
+    } else if (showReportHistory != null) {
+        ReportHistoryScreen(
+            reportId = showReportHistory!!,
+            repository = generatedReportRepository,
+            onNavigateBack = { showReportHistory = null },
+            onViewReport = { generatedId -> showReportContent = generatedId }
+        )
     } else if (showReportEdit) {
         ReportEditScreen(
             report = selectedReportForEdit,
@@ -149,6 +166,9 @@ fun HomeScreen(
                     onEditClick = { report ->
                         selectedReportForEdit = report
                         showReportEdit = true
+                    },
+                    onHistoryClick = { report ->
+                        showReportHistory = report.id
                     },
                     innerPadding = innerPadding
                 )
