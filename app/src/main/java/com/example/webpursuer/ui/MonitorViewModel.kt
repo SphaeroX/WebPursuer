@@ -69,4 +69,12 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     suspend fun getInteractions(monitorId: Int): List<Interaction> {
         return interactionDao.getInteractionsForMonitor(monitorId)
     }
+
+    suspend fun getCheckLog(id: Int): CheckLog? {
+        return checkLogDao.getById(id)
+    }
+
+    suspend fun getPreviousCheckLog(monitorId: Int, currentTimestamp: Long): CheckLog? {
+        return checkLogDao.getPreviousLog(monitorId, currentTimestamp)
+    }
 }

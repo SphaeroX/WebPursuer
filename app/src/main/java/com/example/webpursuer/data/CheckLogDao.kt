@@ -13,8 +13,14 @@ interface CheckLogDao {
     @Query("SELECT * FROM check_logs WHERE timestamp > :since AND result = 'CHANGED'")
     suspend fun getChangedLogsSince(since: Long): List<CheckLog>
 
+    @Query("SELECT * FROM check_logs WHERE id = :id")
+    suspend fun getById(id: Int): CheckLog?
+
+    @Query("SELECT * FROM check_logs WHERE monitorId = :monitorId AND timestamp < :timestamp ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getPreviousLog(monitorId: Int, timestamp: Long): CheckLog?
+
     @Insert
-    suspend fun insert(log: CheckLog)
+    suspend fun insert(log: CheckLog): Long
     
     @Query("DELETE FROM check_logs WHERE monitorId = :monitorId")
     suspend fun deleteLogsForMonitor(monitorId: Int)

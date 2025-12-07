@@ -42,6 +42,8 @@ fun HomeScreen(
     monitorViewModel: MonitorViewModel = viewModel(),
     reportViewModel: ReportViewModel = viewModel(),
     generatedReportRepository: com.example.webpursuer.data.GeneratedReportRepository,
+    initialDiffLogId: Int? = null,
+    initialMonitorId: Int? = null,
     onAddMonitorClick: () -> Unit
 ) {
     val monitors by monitorViewModel.monitors.collectAsState()
@@ -57,13 +59,27 @@ fun HomeScreen(
     var showReportHistory by remember { mutableStateOf<Int?>(null) } // Report ID
     var showReportContent by remember { mutableStateOf<Int?>(null) } // GeneratedReport ID
     
+    // Diff Screen State
+    var diffLogId by remember { mutableStateOf(initialDiffLogId) }
+    var diffMonitorId by remember { mutableStateOf(initialMonitorId) }
+
     // Tab State
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = Monitors, 1 = Reports
 
     // FAB Dialog State
     var showAddDialog by remember { mutableStateOf(false) }
 
-    if (showSettings) {
+    if (diffLogId != null && diffMonitorId != null) {
+        DiffScreen(
+            checkLogId = diffLogId!!,
+            monitorId = diffMonitorId!!,
+            viewModel = monitorViewModel,
+            onBackClick = {
+                diffLogId = null
+                diffMonitorId = null
+            }
+        )
+    } else if (showSettings) {
         SettingsScreen(onBackClick = { showSettings = false })
     } else if (showReportContent != null) {
         ReportContentScreen(

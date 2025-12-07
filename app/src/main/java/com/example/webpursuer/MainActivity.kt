@@ -25,10 +25,15 @@ class MainActivity : ComponentActivity() {
                 val monitorViewModel: MonitorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                 val reportViewModel: com.example.webpursuer.ui.ReportViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                 
+                val monitorId = intent.getIntExtra("monitorId", -1).takeIf { it != -1 }
+                val checkLogId = intent.getIntExtra("checkLogId", -1).takeIf { it != -1 }
+
                 HomeScreen(
                     monitorViewModel = monitorViewModel,
                     reportViewModel = reportViewModel,
                     generatedReportRepository = generatedReportRepository,
+                    initialDiffLogId = checkLogId,
+                    initialMonitorId = monitorId,
                     onAddMonitorClick = {
                         val intent = android.content.Intent(this, com.example.webpursuer.ui.BrowserActivity::class.java)
                         startActivity(intent)

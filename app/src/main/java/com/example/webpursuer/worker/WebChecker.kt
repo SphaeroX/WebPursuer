@@ -35,27 +35,33 @@ class WebChecker(
             var result: String
             var message: String
             val newHash: String?
+            var shouldNotify = false
 
             // Standard Change Detection
             if (monitor.lastContentHash == null) {
                 result = "SUCCESS"
                 message = "Initial check successful."
                 newHash = contentHash
+                // Usually don't notify on initial check unless requested, but sticking to existing logic which seemed to not notify? 
+                // Existing logic: if lastContentHash != contentHash (which is true if null? No, explicit null check). 
+                // So initial check -> no notification.
             } else if (monitor.lastContentHash != contentHash) {
                 result = "CHANGED"
                 message = "Content changed!"
                 newHash = contentHash
+                shouldNotify = true
                 
                 if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
                     val llmResult = openRouterService.checkContent(monitor.llmPrompt, content)
                     if (llmResult) {
-                        sendNotification(monitor.id, "Smart Alert", "Condition met: ${monitor.llmPrompt}")
                         message += " LLM Condition Met."
+                        // Notify
                     } else {
                         message += " LLM Condition NOT Met."
+                        shouldNotify = false // Don't notify if LLM condition fails
                     }
                 } else {
-                    sendNotification(monitor.id, "Monitor Update", "Content changed for ${monitor.name}")
+                    message += " Content changed for ${monitor.name}"
                 }
             } else {
                 result = "UNCHANGED"
@@ -72,7 +78,7 @@ class WebChecker(
             )
 
             // Log Result
-            checkLogDao.insert(
+            val logId = checkLogDao.insert(
                 CheckLog(
                     monitorId = monitor.id,
                     timestamp = now,
@@ -81,6 +87,11 @@ class WebChecker(
                     content = content
                 )
             )
+
+            // Send Notification if needed
+            if (result == "CHANGED" && shouldNotify) {
+                sendNotification(monitor.id, logId.toInt(), "Monitor Update", message)
+            }
 
         } catch (e: Exception) {
             e.printStackTrace()
@@ -239,7 +250,7 @@ class WebChecker(
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    private suspend fun sendNotification(monitorId: Int, title: String, message: String) {
+    private suspend fun sendNotification(monitorId: Int, logId: Int, title: String, message: String) {
         // Check if notifications are enabled globally
         val isGloballyEnabled = settingsRepository.notificationsEnabled.first()
         if (!isGloballyEnabled) {
@@ -254,14 +265,16 @@ class WebChecker(
 
         val intent = android.content.Intent(context, com.example.webpursuer.MainActivity::class.java).apply {
             flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("monitorId", monitorId)
+            putExtra("checkLogId", logId)
         }
         val pendingIntent: android.app.PendingIntent = android.app.PendingIntent.getActivity(
-            context, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE
+            context, monitorId, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val builder = androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
             .setSmallIcon(android.R.drawable.ic_dialog_info) // Use a default icon for now
-            .setContentTitle(title)
+            .setContentTitle("Changes found") // Simplified title
             .setContentText(message)
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
