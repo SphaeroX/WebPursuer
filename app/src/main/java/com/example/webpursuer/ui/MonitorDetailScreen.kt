@@ -3,6 +3,8 @@ package com.example.webpursuer.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -45,10 +47,13 @@ fun MonitorDetailScreen(
                     Text("Message: ${selectedLog!!.message}")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Content Found:", style = MaterialTheme.typography.labelLarge)
+                    val scrollState = rememberScrollState()
                     Text(
                         text = selectedLog!!.content ?: "No content stored",
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.heightIn(max = 200.dp) // Limit height
+                        modifier = Modifier
+                            .heightIn(max = 200.dp) // Limit height
+                            .verticalScroll(scrollState)
                     )
                 }
             },
