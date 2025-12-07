@@ -161,16 +161,72 @@ class WebChecker(
         val js = """
             (function() {
                 var element = document.querySelector('$selector');
-                return element ? element.innerText : '';
+                if (!element) return '';
+                
+                function getRecursiveText(node) {
+                    if (node.nodeType === 3) { // Node.TEXT_NODE
+                        return (node.nodeValue || "").trim();
+                    }
+                    if (node.nodeType !== 1) return ""; // Node.ELEMENT_NODE
+                    
+                    var tagName = node.tagName.toLowerCase();
+                    // Skip scripts and styles
+                    if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') return "";
+                    
+                    var text = "";
+                    var isBlock = false;
+                    try {
+                        var style = window.getComputedStyle(node);
+                        // Skip hidden elements, but leniently
+                        if (style.display === 'none' || style.visibility === 'hidden') return "";
+                        isBlock = (style.display === 'block' || style.display === 'flex' || style.display === 'grid' || style.display === 'table-row');
+                    } catch (e) {}
+
+                    // Form elements
+                    if (tagName === 'input') {
+                        var type = node.type ? node.type.toLowerCase() : 'text';
+                        if (type !== 'hidden' && type !== 'submit' && type !== 'button' && type !== 'image') {
+                             return node.value || "";
+                        }
+                    }
+                    if (tagName === 'textarea') {
+                        return node.value || "";
+                    }
+                    if (tagName === 'select') {
+                         if (node.selectedIndex >= 0) return node.options[node.selectedIndex].text;
+                         return "";
+                    }
+                    if (tagName === 'br') return "\n";
+                    
+                    // Children
+                    var childTexts = [];
+                    for (var i = 0; i < node.childNodes.length; i++) {
+                        var childVal = getRecursiveText(node.childNodes[i]);
+                        if (childVal) childTexts.push(childVal);
+                    }
+                    
+                    text = childTexts.join(isBlock ? "\n" : " ");
+                    
+                    if (isBlock) text = "\n" + text + "\n";
+                    
+                    return text;
+                }
+
+                // Clean up multiple newlines
+                return getRecursiveText(element).replace(/\n\s*\n/g, '\n').trim();
             })();
         """.trimIndent()
         
         webView.evaluateJavascript(js) { result ->
             val text = if (result != null && result != "null") {
-                result.substring(1, result.length - 1)
-                    .replace("\\n", "\n")
-                    .replace("\\\"", "\"")
-                    .replace("\\\\", "\\")
+                 if (result.startsWith("\"") && result.endsWith("\"")) {
+                    result.substring(1, result.length - 1)
+                        .replace("\\n", "\n")
+                        .replace("\\\"", "\"")
+                        .replace("\\\\", "\\")
+                 } else {
+                     result
+                 }
             } else {
                 ""
             }

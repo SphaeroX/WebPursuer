@@ -110,7 +110,58 @@
 
     window.getTextContent = function () {
         if (!currentElement) return "";
-        return currentElement.value || currentElement.innerText || currentElement.textContent || "";
+
+        function getRecursiveText(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return (node.nodeValue || "").trim();
+            }
+            if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+            var tagName = node.tagName.toLowerCase();
+            // Skip scripts and styles
+            if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') return "";
+
+            var text = "";
+            var isBlock = false;
+            try {
+                var style = window.getComputedStyle(node);
+                // Skip hidden elements, but leniently
+                if (style.display === 'none' || style.visibility === 'hidden') return "";
+                isBlock = (style.display === 'block' || style.display === 'flex' || style.display === 'grid' || style.display === 'table-row');
+            } catch (e) { }
+
+            // Form elements
+            if (tagName === 'input') {
+                var type = node.type ? node.type.toLowerCase() : 'text';
+                if (type !== 'hidden' && type !== 'submit' && type !== 'button' && type !== 'image') {
+                    return node.value || "";
+                }
+            }
+            if (tagName === 'textarea') {
+                return node.value || "";
+            }
+            if (tagName === 'select') {
+                if (node.selectedIndex >= 0) return node.options[node.selectedIndex].text;
+                return "";
+            }
+            if (tagName === 'br') return "\n";
+
+            // Children
+            var childTexts = [];
+            for (var i = 0; i < node.childNodes.length; i++) {
+                var childVal = getRecursiveText(node.childNodes[i]);
+                if (childVal) childTexts.push(childVal);
+            }
+
+            text = childTexts.join(isBlock ? "\n" : " ");
+
+            if (isBlock) text = "\n" + text + "\n";
+
+            return text;
+        }
+
+        // Clean up multiple newlines
+        return getRecursiveText(currentElement).replace(/\n\s*\n/g, '\n').trim();
     };
 
     document.addEventListener('click', function (e) {
