@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.webpursuer.data.AppDatabase
 import com.example.webpursuer.data.Monitor
 import com.example.webpursuer.data.CheckLog
+import com.example.webpursuer.data.Interaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,5 +60,13 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
             val webChecker = com.example.webpursuer.worker.WebChecker(context, monitorDao, checkLogDao, interactionDao, openRouterService, settingsRepository)
             webChecker.checkMonitor(monitor, System.currentTimeMillis())
         }
+    }
+
+    suspend fun getMonitor(id: Int): Monitor? {
+        return monitorDao.getById(id)
+    }
+
+    suspend fun getInteractions(monitorId: Int): List<Interaction> {
+        return interactionDao.getInteractionsForMonitor(monitorId)
     }
 }

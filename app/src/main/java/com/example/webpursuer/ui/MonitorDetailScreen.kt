@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -100,7 +101,22 @@ fun MonitorDetailScreen(
                         },
                         label = { Text("CSS Selector") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        trailingIcon = {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            IconButton(onClick = {
+                                val intent = android.content.Intent(
+                                    context, 
+                                    BrowserActivity::class.java
+                                ).apply {
+                                    putExtra("monitorId", monitor.id)
+                                    putExtra("url", monitor.url)
+                                }
+                                context.startActivity(intent)
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit in Browser")
+                            }
+                        }
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     
