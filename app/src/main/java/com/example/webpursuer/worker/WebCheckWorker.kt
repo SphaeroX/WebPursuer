@@ -25,6 +25,9 @@ class WebCheckWorker(
     private val webChecker = WebChecker(context.applicationContext, monitorDao, checkLogDao, interactionDao, openRouterService, settingsRepository)
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        if (!com.example.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)) {
+            return@withContext Result.retry()
+        }
         try {
             val monitors = monitorDao.getAllSync() // We need a sync version or collect the flow
             val now = System.currentTimeMillis()

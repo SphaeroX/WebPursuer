@@ -25,6 +25,9 @@ class ReportWorker(
     private val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository)
 
     override suspend fun doWork(): Result {
+        if (!com.example.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)) {
+            return Result.retry()
+        }
         try {
             val reportId = inputData.getInt("report_id", -1)
             if (reportId == -1) {

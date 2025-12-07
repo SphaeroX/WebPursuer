@@ -32,6 +32,11 @@ class WebChecker(
             val content = loadContent(monitor.url, monitor.selector, interactions)
             val contentHash = hash(content)
 
+            if (content.isBlank()) {
+                android.util.Log.w("WebChecker", "Empty content loaded for monitor ${monitor.name} (${monitor.url}). Skipping update.")
+                return 
+            }
+
             var result: String
             var message: String
             val newHash: String?

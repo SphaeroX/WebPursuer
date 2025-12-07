@@ -13,7 +13,12 @@ class WebPursuerApp : Application() {
         super.onCreate()
         createNotificationChannel()
         
+        val constraints = androidx.work.Constraints.Builder()
+            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+            .build()
+
         val workRequest = PeriodicWorkRequestBuilder<WebCheckWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
