@@ -69,4 +69,4 @@ Um das Projekt ohne Android Studio zu bauen und zu debuggen, können folgende Be
 
 > [!IMPORTANT]
 > **Automatische Aktualisierung**: Diese Datei (`GEMINI.md`) soll bei wichtigen neuen Erkenntnissen, insbesondere bezüglich Build-Konfigurationen, Fehlern und deren Lösungen, automatisch aktualisiert werden, um zukünftiges Debugging zu erleichtern.
-> Nachdem du das Dateien geändert hast, verschieh vor dem Abschluss immer die App zu bauen und zu testen. 
+> Nachdem du die Dateien geändert hast, solltest du die App vor dem Abschluss immer bauen und testen. Benutze hierfür `.\gradlew assembleDebug -q`, damit die Ausgabe kurz ist und du sie nicht extra in eine Datei schreiben musst.
