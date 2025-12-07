@@ -43,6 +43,32 @@ class WebCheckWorker(
 
     private fun shouldCheck(monitor: Monitor, now: Long): Boolean {
         if (!monitor.enabled) return false
+
+        if (monitor.scheduleType == "DAILY" && monitor.checkTime != null) {
+            val parts = monitor.checkTime.split(":")
+            if (parts.size == 2) {
+                val hour = parts[0].toIntOrNull() ?: 0
+                val minute = parts[1].toIntOrNull() ?: 0
+
+                val calendar = java.util.Calendar.getInstance()
+                calendar.timeInMillis = now
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, hour)
+                calendar.set(java.util.Calendar.MINUTE, minute)
+                calendar.set(java.util.Calendar.SECOND, 0)
+                calendar.set(java.util.Calendar.MILLISECOND, 0)
+
+                val targetTimeToday = calendar.timeInMillis
+                
+                // If it's already past the target time for today
+                if (now >= targetTimeToday) {
+                    // Check if we haven't checked since the target time
+                    return monitor.lastCheckTime < targetTimeToday
+                }
+                return false
+            }
+        }
+        
+        // Fallback or INTERVAL type
         val intervalMillis = monitor.checkIntervalMinutes * 60 * 1000
         return (now - monitor.lastCheckTime) >= intervalMillis
     }

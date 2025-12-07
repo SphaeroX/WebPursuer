@@ -104,29 +104,102 @@ fun MonitorDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Interval Selection
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Check Interval: ")
-                        Box {
-                            TextButton(onClick = { expanded = true }) {
-                                Text(intervals.find { it.first == currentInterval }?.second ?: "$currentInterval min")
-                            }
-                            DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                intervals.forEach { (minutes, label) ->
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            currentInterval = minutes
-                                            expanded = false
-                                            viewModel.updateMonitor(monitor.copy(checkIntervalMinutes = minutes))
-                                        }
-                                    )
-                                }
-                            }
+                    // Schedule Settings
+                    Text("Schedule Type", style = MaterialTheme.typography.titleSmall)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = monitor.scheduleType == "INTERVAL",
+                            onClick = { viewModel.updateMonitor(monitor.copy(scheduleType = "INTERVAL")) }
+                        )
+                        Text("Interval")
+                        Spacer(modifier = Modifier.width(16.dp))
+                        RadioButton(
+                            selected = monitor.scheduleType == "DAILY",
+                            onClick = { viewModel.updateMonitor(monitor.copy(scheduleType = "DAILY")) }
+                        )
+                        Text("Daily")
+                    }
+
+                    if (monitor.scheduleType == "INTERVAL") {
+                        var intervalText by remember(monitor.checkIntervalMinutes) { 
+                            if (monitor.checkIntervalMinutes == 0L) mutableStateOf("")
+                            else if (monitor.checkIntervalMinutes % 60 == 0L) mutableStateOf("${monitor.checkIntervalMinutes / 60}h")
+                            else mutableStateOf("${monitor.checkIntervalMinutes}m")
                         }
+                        
+                        OutlinedTextField(
+                            value = intervalText,
+                            onValueChange = { input ->
+                                intervalText = input
+                                // Parse input like "1h", "15m", "1h 30m"
+                                var totalMinutes = 0L
+                                val hourMatch = Regex("(\\d+)\\s*h").find(input)
+                                val minMatch = Regex("(\\d+)\\s*m").find(input)
+                                
+                                if (hourMatch != null) {
+                                    totalMinutes += (hourMatch.groupValues[1].toLongOrNull() ?: 0) * 60
+                                }
+                                if (minMatch != null) {
+                                    totalMinutes += (minMatch.groupValues[1].toLongOrNull() ?: 0)
+                                }
+                                
+                                // Fallback for just numbers
+                                if (totalMinutes == 0L && input.all { it.isDigit() }) {
+                                    totalMinutes = input.toLongOrNull() ?: 0L
+                                }
+
+                                if (totalMinutes > 0) {
+                                     viewModel.updateMonitor(monitor.copy(checkIntervalMinutes = totalMinutes))
+                                }
+                            },
+                            label = { Text("Interval (e.g. 15m, 1h)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            supportingText = { Text("Android minimum is 15 minutes") }
+                        )
+                    } else {
+                        // Daily Time Selection
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        val calendar = Calendar.getInstance()
+                        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
+                        val currentMinute = calendar.get(Calendar.MINUTE)
+
+                        var timeText by remember(monitor.checkTime) { mutableStateOf(monitor.checkTime ?: String.format("%02d:%02d", currentHour, currentMinute)) }
+
+                        val timePickerDialog = android.app.TimePickerDialog(
+                            context,
+                            { _, hourOfDay, minute ->
+                                val selectedTime = String.format("%02d:%02d", hourOfDay, minute)
+                                timeText = selectedTime
+                                viewModel.updateMonitor(monitor.copy(checkTime = selectedTime))
+                            },
+                            currentHour,
+                            currentMinute,
+                            true // 24 hour format
+                        )
+
+                        OutlinedTextField(
+                            value = timeText,
+                            onValueChange = {}, // Read only, click sets it
+                            label = { Text("Time (HH:mm)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                                .also { interactionSource ->
+                                    LaunchedEffect(interactionSource) {
+                                        interactionSource.interactions.collect {
+                                            if (it is androidx.compose.foundation.interaction.PressInteraction.Release) {
+                                                timePickerDialog.show()
+                                            }
+                                        }
+                                    }
+                                }
+                        )
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))

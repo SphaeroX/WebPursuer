@@ -15,5 +15,7 @@ data class Monitor(
     val enabled: Boolean = true,
     val llmPrompt: String? = null,
     val llmEnabled: Boolean = false,
-    val notificationsEnabled: Boolean = true
+    val notificationsEnabled: Boolean = true,
+    val scheduleType: String = "INTERVAL", // INTERVAL or DAILY
+    val checkTime: String? = null // HH:mm for DAILY
 )
