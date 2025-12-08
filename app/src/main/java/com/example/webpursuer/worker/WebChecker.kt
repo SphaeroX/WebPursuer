@@ -29,13 +29,34 @@ class WebChecker(
     suspend fun checkMonitor(monitor: Monitor, now: Long) {
         try {
             val interactions = interactionDao.getInteractionsForMonitor(monitor.id)
-            val content = loadContent(monitor.url, monitor.selector, interactions)
-            val contentHash = hash(content)
+            var content = ""
+            var attempt = 0
+            while (content.isBlank() && attempt < 3) {
+                if (attempt > 0) {
+                    android.util.Log.d("WebChecker", "Retry load content attempt ${attempt + 1} for ${monitor.name}")
+                    kotlinx.coroutines.delay(2000)
+                }
+                content = loadContent(monitor.url, monitor.selector, interactions)
+                attempt++
+            }
 
             if (content.isBlank()) {
-                android.util.Log.w("WebChecker", "Empty content loaded for monitor ${monitor.name} (${monitor.url}). Skipping update.")
+                val errorMsg = "Empty content loaded after $attempt attempts for monitor ${monitor.name} (${monitor.url})."
+                android.util.Log.e("WebChecker", errorMsg)
+                
+                 checkLogDao.insert(
+                    CheckLog(
+                        monitorId = monitor.id,
+                        timestamp = now,
+                        result = "FAILURE",
+                        message = errorMsg,
+                        content = null
+                    )
+                )
                 return 
             }
+
+            val contentHash = hash(content)
 
             var result: String
             var message: String
