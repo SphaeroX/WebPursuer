@@ -218,7 +218,13 @@ class BrowserActivity : ComponentActivity() {
                                 monitorViewModel.addMonitor(
                                     Monitor(
                                         url = webView.url ?: url,
-                                        name = monitorName.ifBlank { "Monitor" },
+                                        name = monitorName.ifBlank {
+                                            try {
+                                                android.net.Uri.parse(webView.url ?: url).host ?: "Monitor"
+                                            } catch (e: Exception) {
+                                                "Monitor"
+                                            }
+                                        },
                                         selector = selectedSelector!!
                                     ),
                                     browserViewModel.getRecordedInteractions().mapIndexed { index, data ->
