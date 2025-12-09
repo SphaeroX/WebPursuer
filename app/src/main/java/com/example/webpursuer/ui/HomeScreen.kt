@@ -44,6 +44,7 @@ fun HomeScreen(
     generatedReportRepository: com.example.webpursuer.data.GeneratedReportRepository,
     initialDiffLogId: Int? = null,
     initialMonitorId: Int? = null,
+    initialGeneratedReportId: Int? = null,
     onAddMonitorClick: () -> Unit
 ) {
     val monitors by monitorViewModel.monitors.collectAsState()
@@ -58,7 +59,7 @@ fun HomeScreen(
     var selectedReportForEdit by remember { mutableStateOf<com.example.webpursuer.data.Report?>(null) }
     
     var showReportHistory by remember { mutableStateOf<Int?>(null) } // Report ID
-    var showReportContent by remember { mutableStateOf<Int?>(null) } // GeneratedReport ID
+    var showReportContent by remember { mutableStateOf(initialGeneratedReportId) } // GeneratedReport ID
     
     // Diff Screen State
     var diffLogId by remember { mutableStateOf(initialDiffLogId) }

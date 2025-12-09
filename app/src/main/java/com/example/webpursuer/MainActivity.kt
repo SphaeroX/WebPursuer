@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
                 
                 val monitorId = intent.getIntExtra("monitorId", -1).takeIf { it != -1 }
                 val checkLogId = intent.getIntExtra("checkLogId", -1).takeIf { it != -1 }
+                val generatedReportId = intent.getIntExtra("generatedReportId", -1).takeIf { it != -1 }
 
                 HomeScreen(
                     monitorViewModel = monitorViewModel,
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
                     generatedReportRepository = generatedReportRepository,
                     initialDiffLogId = checkLogId,
                     initialMonitorId = monitorId,
+                    initialGeneratedReportId = generatedReportId,
                     onAddMonitorClick = {
                         val intent = android.content.Intent(this, com.example.webpursuer.ui.BrowserActivity::class.java)
                         startActivity(intent)

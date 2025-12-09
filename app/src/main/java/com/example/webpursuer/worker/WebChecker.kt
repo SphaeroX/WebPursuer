@@ -289,8 +289,9 @@ class WebChecker(
         }
 
         // Check if notifications are enabled for this monitor
+        // Check if notifications are enabled for this monitor
         val monitor = monitorDao.getById(monitorId)
-        if (monitor != null && !monitor.notificationsEnabled) {
+        if (monitor == null || !monitor.notificationsEnabled) {
             return
         }
 
@@ -304,9 +305,9 @@ class WebChecker(
         )
 
         val builder = androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Use a default icon for now
-            .setContentTitle("Changes found") // Simplified title
-            .setContentText(message)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Changes found")
+            .setContentText("Content changed for ${monitor.name}")
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
