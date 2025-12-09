@@ -53,6 +53,7 @@ fun HomeScreen(
 
     // Navigation States
     var showSettings by remember { mutableStateOf(false) }
+    var showLogs by remember { mutableStateOf(false) } // New state
     var showReportEdit by remember { mutableStateOf(false) }
     var selectedReportForEdit by remember { mutableStateOf<com.example.webpursuer.data.Report?>(null) }
     
@@ -79,8 +80,16 @@ fun HomeScreen(
                 diffMonitorId = null
             }
         )
+    } else if (showLogs) {
+        LogScreen(onBackClick = { showLogs = false })
     } else if (showSettings) {
-        SettingsScreen(onBackClick = { showSettings = false })
+        SettingsScreen(
+            onBackClick = { showSettings = false },
+            onLogsClick = {
+                showSettings = false
+                showLogs = true
+            }
+        )
     } else if (showReportContent != null) {
         ReportContentScreen(
             generatedReportId = showReportContent!!,

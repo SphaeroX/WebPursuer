@@ -7,13 +7,14 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.util.concurrent.Executors
 
-@Database(entities = [Monitor::class, CheckLog::class, Interaction::class, Report::class, GeneratedReport::class], version = 7, exportSchema = false)
+@Database(entities = [Monitor::class, CheckLog::class, Interaction::class, Report::class, GeneratedReport::class, AppLog::class], version = 8, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun monitorDao(): MonitorDao
     abstract fun checkLogDao(): CheckLogDao
     abstract fun interactionDao(): InteractionDao
     abstract fun reportDao(): ReportDao
     abstract fun generatedReportDao(): GeneratedReportDao
+    abstract fun appLogDao(): AppLogDao
 
     companion object {
         @Volatile

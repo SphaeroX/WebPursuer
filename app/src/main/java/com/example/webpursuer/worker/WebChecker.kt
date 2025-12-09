@@ -23,7 +23,8 @@ class WebChecker(
     private val checkLogDao: CheckLogDao,
     private val interactionDao: com.example.webpursuer.data.InteractionDao,
     private val openRouterService: com.example.webpursuer.network.OpenRouterService,
-    private val settingsRepository: com.example.webpursuer.data.SettingsRepository
+    private val settingsRepository: com.example.webpursuer.data.SettingsRepository,
+    private val logRepository: com.example.webpursuer.data.LogRepository
 ) {
 
     suspend fun checkMonitor(monitor: Monitor, now: Long) {
@@ -43,6 +44,7 @@ class WebChecker(
             if (content.isBlank()) {
                 val errorMsg = "Empty content loaded after $attempt attempts for monitor ${monitor.name} (${monitor.url})."
                 android.util.Log.e("WebChecker", errorMsg)
+                logRepository.logError("MONITOR", errorMsg)
                 
                  checkLogDao.insert(
                     CheckLog(
@@ -114,6 +116,8 @@ class WebChecker(
                 )
             )
 
+            logRepository.logInfo("MONITOR", "Check finished for ${monitor.name}: $result - $message")
+
             // Send Notification if needed
             if (result == "CHANGED" && shouldNotify) {
                 sendNotification(monitor.id, logId.toInt(), "Monitor Update", message)
@@ -121,6 +125,7 @@ class WebChecker(
 
         } catch (e: Exception) {
             e.printStackTrace()
+            logRepository.logError("MONITOR", "Unexpected error checking ${monitor.name}: ${e.message}", e.stackTraceToString())
             checkLogDao.insert(
                 CheckLog(
                     monitorId = monitor.id,

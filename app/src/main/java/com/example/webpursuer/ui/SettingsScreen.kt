@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onLogsClick: () -> Unit
 ) {
     val context = LocalContext.current
     val settingsRepository = remember { SettingsRepository(context) }
@@ -99,7 +100,10 @@ fun SettingsScreen(
 
             var testResult by remember { mutableStateOf<String?>(null) }
             var isTesting by remember { mutableStateOf(false) }
-            val openRouterService = remember { com.example.webpursuer.network.OpenRouterService(settingsRepository) }
+            
+            val database = remember { com.example.webpursuer.data.AppDatabase.getDatabase(context) }
+            val logRepository = remember { com.example.webpursuer.data.LogRepository(database.appLogDao()) }
+            val openRouterService = remember { com.example.webpursuer.network.OpenRouterService(settingsRepository, logRepository) }
 
             Button(
                 onClick = {
@@ -149,6 +153,24 @@ fun SettingsScreen(
             ) {
                 Text("Save")
             }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text("Advanced", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Button(
+                onClick = onLogsClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                   containerColor = MaterialTheme.colorScheme.tertiary
+                )
+            ) {
+                Text("View System Logs")
+            }
+
         }
     }
 }

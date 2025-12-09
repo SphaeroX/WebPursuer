@@ -22,10 +22,12 @@ class ReportWorker(
     private val checkLogDao = database.checkLogDao()
     private val monitorDao = database.monitorDao()
     private val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
-    private val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository)
+    private val logRepository = com.example.webpursuer.data.LogRepository(database.appLogDao())
+    private val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository, logRepository)
 
     override suspend fun doWork(): Result {
         if (!com.example.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)) {
+            logRepository.logInfo("REPORT", "Skipping report generation: No network")
             return Result.retry()
         }
         try {
@@ -135,10 +137,12 @@ class ReportWorker(
             
             database.reportDao().update(report.copy(lastRunTime = System.currentTimeMillis()))
             
+            logRepository.logInfo("REPORT", "Report '${report.name}' generated successfully.")
             return Result.success()
 
         } catch (e: Exception) {
             e.printStackTrace()
+            logRepository.logError("REPORT", "Failed to generate report: ${e.message}", e.stackTraceToString())
             return Result.failure()
         }
     }

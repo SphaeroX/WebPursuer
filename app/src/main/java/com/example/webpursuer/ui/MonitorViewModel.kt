@@ -56,8 +56,9 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
-            val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository)
-            val webChecker = com.example.webpursuer.worker.WebChecker(context, monitorDao, checkLogDao, interactionDao, openRouterService, settingsRepository)
+            val logRepository = com.example.webpursuer.data.LogRepository(database.appLogDao())
+            val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository, logRepository)
+            val webChecker = com.example.webpursuer.worker.WebChecker(context, monitorDao, checkLogDao, interactionDao, openRouterService, settingsRepository, logRepository)
             webChecker.checkMonitor(monitor, System.currentTimeMillis())
         }
     }
