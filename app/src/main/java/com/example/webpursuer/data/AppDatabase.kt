@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.util.concurrent.Executors
 
-@Database(entities = [Monitor::class, CheckLog::class, Interaction::class, Report::class, GeneratedReport::class, AppLog::class], version = 8, exportSchema = false)
+@Database(entities = [Monitor::class, CheckLog::class, Interaction::class, Report::class, GeneratedReport::class, AppLog::class], version = 8, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun monitorDao(): MonitorDao
     abstract fun checkLogDao(): CheckLogDao
@@ -27,18 +27,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "webpursuer_database"
                 )
-                .fallbackToDestructiveMigration()
-                .addCallback(object : RoomDatabase.Callback() {
-                    override fun onCreate(db: SupportSQLiteDatabase) {
-                        super.onCreate(db)
-                        Executors.newSingleThreadExecutor().execute {
-                            db.execSQL(
-                                "INSERT INTO monitors (url, name, selector, checkIntervalMinutes, lastCheckTime, enabled, llmEnabled, notificationsEnabled, scheduleType) VALUES " +
-                                        "('https://www.unixtimestamp.com/', 'Unix Timestamp', '#main-segment > div.box > div > div.ui.two.column.grid > div > div:nth-child(2) > div > div.value.epoch', 15, 0, 1, 0, 1, 'INTERVAL')"
-                            )
-                        }
-                    }
-                })
                 .build()
                 INSTANCE = instance
                 instance

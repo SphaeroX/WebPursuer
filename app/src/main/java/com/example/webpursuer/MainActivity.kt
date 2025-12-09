@@ -25,6 +25,10 @@ class MainActivity : ComponentActivity() {
                 val monitorViewModel: MonitorViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                 val reportViewModel: com.example.webpursuer.ui.ReportViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                 
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    monitorViewModel.ensureDefaultMonitor()
+                }
+                
                 val monitorId = intent.getIntExtra("monitorId", -1).takeIf { it != -1 }
                 val checkLogId = intent.getIntExtra("checkLogId", -1).takeIf { it != -1 }
                 val generatedReportId = intent.getIntExtra("generatedReportId", -1).takeIf { it != -1 }

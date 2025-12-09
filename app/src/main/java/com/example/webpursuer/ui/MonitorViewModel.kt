@@ -78,4 +78,24 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     suspend fun getPreviousCheckLog(monitorId: Int, currentTimestamp: Long): CheckLog? {
         return checkLogDao.getPreviousLog(monitorId, currentTimestamp)
     }
+
+    fun ensureDefaultMonitor() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val monitors = monitorDao.getAllSync()
+            if (monitors.isEmpty()) {
+                val defaultMonitor = Monitor(
+                    url = "https://www.unixtimestamp.com/",
+                    name = "Unix Timestamp",
+                    selector = "#main-segment > div.box > div > div.ui.two.column.grid > div > div:nth-child(2) > div > div.value.epoch",
+                    checkIntervalMinutes = 15,
+                    lastCheckTime = 0,
+                    enabled = true,
+                    llmEnabled = false,
+                    notificationsEnabled = true,
+                    scheduleType = "INTERVAL"
+                )
+                monitorDao.insert(defaultMonitor)
+            }
+        }
+    }
 }
