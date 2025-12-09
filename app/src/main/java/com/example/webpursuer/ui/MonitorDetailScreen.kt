@@ -136,7 +136,13 @@ fun MonitorDetailScreen(
                         Spacer(modifier = Modifier.width(16.dp))
                         RadioButton(
                             selected = monitor.scheduleType == "DAILY",
-                            onClick = { viewModel.updateMonitor(monitor.copy(scheduleType = "DAILY")) }
+                            onClick = { 
+                                val newCheckTime = monitor.checkTime ?: run {
+                                    val cal = Calendar.getInstance()
+                                    String.format(Locale.getDefault(), "%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+                                }
+                                viewModel.updateMonitor(monitor.copy(scheduleType = "DAILY", checkTime = newCheckTime)) 
+                            }
                         )
                         Text("Daily")
                     }
