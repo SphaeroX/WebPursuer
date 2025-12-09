@@ -57,7 +57,7 @@ class BrowserActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun BrowserScreen() {
-        var url by remember { mutableStateOf("https://google.com") }
+        var url by remember { mutableStateOf(intent.getStringExtra("initialUrl") ?: "https://google.com") }
         val isSelecting by browserViewModel.isSelecting.collectAsState()
         val currentSelector by browserViewModel.currentSelector.collectAsState()
         var monitorName by remember { mutableStateOf("") }
