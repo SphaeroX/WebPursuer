@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,7 +17,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.webpursuer.data.GeneratedReport
 import com.example.webpursuer.data.GeneratedReportRepository
 
@@ -40,7 +49,7 @@ fun ReportContentScreen(
                 title = { Text("Report Content") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -65,16 +74,112 @@ fun ReportContentScreen(
                     contentPadding = PaddingValues(16.dp)
                 ) {
                     item {
-                        // Simple text rendering for now, maybe replaced by Markdown renderer if needed
-                        // Ideally we would parse the markdown here. 
-                        // For MVP, just displaying the text with proper whitespace handling.
-                        Text(
-                            text = currentReport.content,
-                            style = MaterialTheme.typography.bodyMedium
+                        MarkdownText(
+                            markdown = currentReport.content,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
+    val styledText = remember(markdown) { parseMarkdown(markdown) }
+    Text(
+        text = styledText,
+        modifier = modifier,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+fun parseMarkdown(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        val lines = text.split("\n")
+        lines.forEachIndexed { index, line ->
+            var currentLine = line
+            var isHeading = false
+            var isListItem = false
+
+            // Heading 1
+            if (currentLine.startsWith("# ")) {
+                pushStyle(SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold))
+                currentLine = currentLine.removePrefix("# ")
+                isHeading = true
+            } 
+            // Heading 2
+            else if (currentLine.startsWith("## ")) {
+                pushStyle(SpanStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                currentLine = currentLine.removePrefix("## ")
+                isHeading = true
+            }
+            // List Item
+            else if (currentLine.trim().startsWith("* ") || currentLine.trim().startsWith("- ")) {
+                append("• ")
+                currentLine = currentLine.trim().substring(2)
+                isListItem = true
+            }
+
+            // Process inline formatting
+            val parts = splitByDelimiters(currentLine)
+            parts.forEach { part ->
+                when (part.type) {
+                    MarkdownType.BOLD -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(part.text) }
+                    MarkdownType.ITALIC -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(part.text) }
+                    MarkdownType.CODE -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = Color.LightGray.copy(alpha = 0.3f))) { append(part.text) }
+                    MarkdownType.LINK -> withStyle(SpanStyle(color = Color.Blue)) { append(part.text) } // Just visual for now
+                    MarkdownType.TEXT -> append(part.text)
+                }
+            }
+
+            if (isHeading) {
+                pop() // Pop heading style
+            }
+            
+            if (index < lines.size - 1) {
+                append("\n")
+            }
+        }
+    }
+}
+
+enum class MarkdownType { TEXT, BOLD, ITALIC, CODE, LINK }
+
+data class MarkdownPart(val type: MarkdownType, val text: String)
+
+fun splitByDelimiters(text: String): List<MarkdownPart> {
+    val parts = mutableListOf<MarkdownPart>()
+    var currentIndex = 0
+    val regex = Regex("(\\*\\*.*?\\*\\*)|(\\*.*?\\*)|(`.*?`)|(\\[.*?\\]\\(.*?\\))") // Simplistic regex for Bold, Italic, Code, Link
+
+    val matches = regex.findAll(text)
+    
+    for (match in matches) {
+        if (match.range.first > currentIndex) {
+            parts.add(MarkdownPart(MarkdownType.TEXT, text.substring(currentIndex, match.range.first)))
+        }
+        
+        val value = match.value
+        when {
+            value.startsWith("**") -> parts.add(MarkdownPart(MarkdownType.BOLD, value.removeSurrounding("**")))
+            value.startsWith("*") -> parts.add(MarkdownPart(MarkdownType.ITALIC, value.removeSurrounding("*")))
+            value.startsWith("`") -> parts.add(MarkdownPart(MarkdownType.CODE, value.removeSurrounding("`")))
+            value.startsWith("[") -> {
+                val label = value.substringAfter("[").substringBefore("]")
+                // val url = value.substringAfter("(").substringBefore(")") 
+                // For now just show label colored
+                parts.add(MarkdownPart(MarkdownType.LINK, label))
+            }
+        }
+        currentIndex = match.range.last + 1
+    }
+    
+    if (currentIndex < text.length) {
+        parts.add(MarkdownPart(MarkdownType.TEXT, text.substring(currentIndex)))
+    }
+    
+    return parts
 }
