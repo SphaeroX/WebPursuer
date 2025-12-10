@@ -244,8 +244,43 @@ fun MonitorDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
                     
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // AI Data Interpretation
+                    Text("AI Data Interpretation", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Interpret Data with AI", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = monitor.useAiInterpreter,
+                            onCheckedChange = { 
+                                viewModel.updateMonitor(monitor.copy(useAiInterpreter = it)) 
+                            }
+                        )
+                    }
+                    
+                    if (monitor.useAiInterpreter) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = monitor.aiInterpreterInstruction,
+                            onValueChange = { 
+                                viewModel.updateMonitor(monitor.copy(aiInterpreterInstruction = it)) 
+                            },
+                            label = { Text("Interpretation Instruction") },
+                            placeholder = { Text("e.g. Extract the price, Summarize the table") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 2
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
                     // LLM Configuration
-                    Text("Intelligent Monitoring (LLM)", style = MaterialTheme.typography.titleSmall)
+                    Text("Intelligent Monitoring (LLM Condition)", style = MaterialTheme.typography.titleSmall)
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(

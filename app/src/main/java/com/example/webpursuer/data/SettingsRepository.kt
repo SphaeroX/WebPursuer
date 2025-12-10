@@ -15,7 +15,11 @@ class SettingsRepository(private val context: Context) {
 
     companion object {
         val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
+        @Deprecated("Use OPENROUTER_REPORT_MODEL or OPENROUTER_MONITOR_MODEL")
         val OPENROUTER_MODEL = stringPreferencesKey("openrouter_model")
+        val OPENROUTER_REPORT_MODEL = stringPreferencesKey("openrouter_report_model")
+        val OPENROUTER_MONITOR_MODEL = stringPreferencesKey("openrouter_monitor_model")
+
         val NOTIFICATIONS_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("notifications_enabled")
         val REPORT_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("report_enabled")
         val REPORT_TIME_HOUR = androidx.datastore.preferences.core.intPreferencesKey("report_time_hour")
@@ -31,6 +35,19 @@ class SettingsRepository(private val context: Context) {
     val model: Flow<String> = context.dataStore.data
         .map { preferences ->
             preferences[OPENROUTER_MODEL] ?: "google/gemini-2.5-flash-lite" // Default model
+        }
+
+    val reportModel: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[OPENROUTER_REPORT_MODEL]
+                ?: preferences[OPENROUTER_MODEL] // Fallback to old setting if exists
+                ?: "google/gemini-2.5-flash-lite"
+        }
+
+    val monitorModel: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[OPENROUTER_MONITOR_MODEL]
+                ?: "google/gemini-2.5-flash-lite"
         }
 
     val notificationsEnabled: Flow<Boolean> = context.dataStore.data
@@ -67,6 +84,18 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveModel(model: String) {
         context.dataStore.edit { preferences ->
             preferences[OPENROUTER_MODEL] = model
+        }
+    }
+
+    suspend fun saveReportModel(model: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OPENROUTER_REPORT_MODEL] = model
+        }
+    }
+
+    suspend fun saveMonitorModel(model: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OPENROUTER_MONITOR_MODEL] = model
         }
     }
 

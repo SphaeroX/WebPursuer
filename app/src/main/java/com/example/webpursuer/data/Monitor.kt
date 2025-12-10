@@ -17,5 +17,7 @@ data class Monitor(
     val llmEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
     val scheduleType: String = "INTERVAL", // INTERVAL or DAILY
-    val checkTime: String? = null // HH:mm for DAILY
+    val checkTime: String? = null, // HH:mm for DAILY
+    @androidx.room.ColumnInfo(defaultValue = "0") val useAiInterpreter: Boolean = false,
+    @androidx.room.ColumnInfo(defaultValue = "'Summarize the key information.'") val aiInterpreterInstruction: String = "Summarize the key information."
 )

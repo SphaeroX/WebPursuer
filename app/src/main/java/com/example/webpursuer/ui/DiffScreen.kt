@@ -136,9 +136,28 @@ fun DiffScreen(
                     }
                 }
 
+                // Toggle for Raw/Interpreted
+                var showRaw by remember { mutableStateOf(false) }
+                val hasRawContent = newLog?.rawContent != null
+
+                if (hasRawContent) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Show Raw Content", color = Color.White, modifier = Modifier.weight(1f))
+                        androidx.compose.material3.Switch(
+                            checked = showRaw,
+                            onCheckedChange = { showRaw = it }
+                        )
+                    }
+                }
+
                 // Diff Content
-                val oldText = oldLog?.content ?: ""
-                val newText = newLog?.content ?: ""
+                val oldText = if (showRaw) (oldLog?.rawContent ?: oldLog?.content ?: "") else (oldLog?.content ?: "")
+                val newText = if (showRaw) (newLog?.rawContent ?: "") else (newLog?.content ?: "")
                 val diffLines = GenerateDiff(oldText, newText)
 
                 LazyColumn(

@@ -16,20 +16,19 @@ class OpenRouterService(
     suspend fun checkContent(prompt: String, content: String): Boolean {
         logRepository?.logInfo("LLM", "checkContent called request for prompt: ${prompt.take(50)}...")
         val apiKey = settingsRepository.apiKey.first() ?: return false
-        val model = settingsRepository.model.first()
+        val model = settingsRepository.monitorModel.first() // Use Monitor Model
 
-        // ... (Client building)
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $apiKey")
-                    .addHeader("HTTP-Referer", "https://github.com/example/webpursuer") // Required by OpenRouter
+                    .addHeader("HTTP-Referer", "https://github.com/example/webpursuer") 
                     .addHeader("X-Title", "WebPursuer")
                     .build()
                 chain.proceed(request)
             }
             .build()
-
+        // ... (rest of client setup same as before, likely could refactor but keeping changes minimal for now)
         val retrofit = Retrofit.Builder()
             .baseUrl("https://openrouter.ai/")
             .client(client)
@@ -53,7 +52,7 @@ class OpenRouterService(
             
             val reply = response.choices.firstOrNull()?.message?.content?.trim()?.uppercase()
             logRepository?.logInfo("LLM", "checkContent response: $reply")
-            return reply == "YES"
+            return reply != null && (reply == "YES" || reply.contains("YES")) // Relaxed check slightly
         } catch (e: Exception) {
             e.printStackTrace()
             logRepository?.logError("LLM", "checkContent failed: ${e.message}", e.stackTraceToString())
@@ -61,9 +60,54 @@ class OpenRouterService(
         }
     }
 
+    suspend fun interpretContent(instruction: String, content: String): String {
+        logRepository?.logInfo("LLM", "interpretContent called with instruction: ${instruction.take(50)}...")
+        val apiKey = settingsRepository.apiKey.first() ?: return content // Fallback to original if no key
+        val model = settingsRepository.monitorModel.first()
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("HTTP-Referer", "https://github.com/example/webpursuer")
+                    .addHeader("X-Title", "WebPursuer")
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://openrouter.ai/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+        val api = retrofit.create(OpenRouterApi::class.java)
+
+        val systemPrompt = "You are an AI interpreter for a web monitor. Your task is to process the raw webpage content according to the user's instruction (e.g., 'summarize', 'extract price', 'convert to table'). Return ONLY the interpreted content. Do not add conversational filler."
+        val userMessage = "Instruction: $instruction\n\nWeb Content:\n$content"
+
+        try {
+            val response = api.getCompletion(
+                ChatRequest(
+                    model = model,
+                    messages = listOf(
+                        Message("system", systemPrompt),
+                        Message("user", userMessage)
+                    )
+                )
+            )
+            val result = response.choices.firstOrNull()?.message?.content?.trim() ?: content
+            logRepository?.logInfo("LLM", "interpretContent success, length: ${result.length}")
+            return result
+        } catch (e: Exception) {
+            e.printStackTrace()
+            logRepository?.logError("LLM", "interpretContent failed: ${e.message}", e.stackTraceToString())
+            return content // Fallback to original
+        }
+    }
+
     suspend fun testConnection(apiKey: String, model: String): String {
+        // ... (Keep existing implementation)
         logRepository?.logInfo("LLM", "Testing connection to OpenRouter...")
-        // ... (Client building details identical to existing)
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
@@ -108,7 +152,7 @@ class OpenRouterService(
     suspend fun generateReport(prompt: String): String {
         logRepository?.logInfo("LLM", "Generating report...")
         val apiKey = settingsRepository.apiKey.first() ?: return "Error: No API Key"
-        val model = settingsRepository.model.first()
+        val model = settingsRepository.reportModel.first() // Use Report Model
 
         val client = OkHttpClient.Builder()
              .addInterceptor { chain ->

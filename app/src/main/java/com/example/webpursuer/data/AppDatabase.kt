@@ -7,7 +7,16 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.util.concurrent.Executors
 
-@Database(entities = [Monitor::class, CheckLog::class, Interaction::class, Report::class, GeneratedReport::class, AppLog::class], version = 8, exportSchema = true)
+import androidx.room.AutoMigration
+
+@Database(
+    entities = [Monitor::class, CheckLog::class, Interaction::class, Report::class, GeneratedReport::class, AppLog::class],
+    version = 9,
+    exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 8, to = 9)
+    ]
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun monitorDao(): MonitorDao
     abstract fun checkLogDao(): CheckLogDao

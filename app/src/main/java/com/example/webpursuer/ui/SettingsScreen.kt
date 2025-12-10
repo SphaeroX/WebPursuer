@@ -22,15 +22,18 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     
     val apiKey by settingsRepository.apiKey.collectAsState(initial = null)
-    val model by settingsRepository.model.collectAsState(initial = "google/gemini-2.5-flash")
+    val reportModel by settingsRepository.reportModel.collectAsState(initial = "google/gemini-2.5-flash-lite")
+    val monitorModel by settingsRepository.monitorModel.collectAsState(initial = "google/gemini-2.5-flash-lite")
     
     var apiKeyInput by remember { mutableStateOf("") }
-    var modelInput by remember { mutableStateOf("") }
+    var reportModelInput by remember { mutableStateOf("") }
+    var monitorModelInput by remember { mutableStateOf("") }
     
     // Update inputs when data loads
-    LaunchedEffect(apiKey, model) {
+    LaunchedEffect(apiKey, reportModel, monitorModel) {
         if (apiKeyInput.isEmpty()) apiKeyInput = apiKey ?: ""
-        if (modelInput.isEmpty()) modelInput = model
+        if (reportModelInput.isEmpty()) reportModelInput = reportModel
+        if (monitorModelInput.isEmpty()) monitorModelInput = monitorModel
     }
 
     Scaffold(
@@ -76,7 +79,7 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text("OpenRouter Configuration", style = MaterialTheme.typography.titleMedium)
+            Text("OpenRouter (LLM) Configuration", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
             
             OutlinedTextField(
@@ -89,9 +92,19 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             OutlinedTextField(
-                value = modelInput,
-                onValueChange = { modelInput = it },
-                label = { Text("Model (e.g., google/gemini-2.5-flash)") },
+                value = reportModelInput,
+                onValueChange = { reportModelInput = it },
+                label = { Text("Report Model (e.g., google/gemini-2.5-flash)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            OutlinedTextField(
+                value = monitorModelInput,
+                onValueChange = { monitorModelInput = it },
+                label = { Text("Monitor/Interpret Model") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -110,7 +123,8 @@ fun SettingsScreen(
                     isTesting = true
                     testResult = null
                     scope.launch {
-                        testResult = openRouterService.testConnection(apiKeyInput, modelInput)
+                        // Testing with Report Model as primary validation
+                        testResult = openRouterService.testConnection(apiKeyInput, reportModelInput)
                         isTesting = false
                     }
                 },
@@ -126,7 +140,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSecondary
                     )
                 } else {
-                    Text("Test Connection")
+                    Text("Test Connection (Report Model)")
                 }
             }
             
@@ -145,7 +159,8 @@ fun SettingsScreen(
                 onClick = {
                     scope.launch {
                         settingsRepository.saveApiKey(apiKeyInput)
-                        settingsRepository.saveModel(modelInput)
+                        settingsRepository.saveReportModel(reportModelInput)
+                        settingsRepository.saveMonitorModel(monitorModelInput)
                         onBackClick()
                     }
                 },

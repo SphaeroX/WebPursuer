@@ -52,10 +52,18 @@ class WebChecker(
                         timestamp = now,
                         result = "FAILURE",
                         message = errorMsg,
-                        content = null
+                        content = null,
+                        rawContent = null
                     )
                 )
                 return 
+            }
+
+            var rawContent: String? = null
+            if (monitor.useAiInterpreter) {
+                rawContent = content
+                logRepository.logInfo("MONITOR", "Interpreting content with AI for ${monitor.name}...")
+                content = openRouterService.interpretContent(monitor.aiInterpreterInstruction, content)
             }
 
             val contentHash = hash(content)
@@ -70,9 +78,6 @@ class WebChecker(
                 result = "SUCCESS"
                 message = "Initial check successful."
                 newHash = contentHash
-                // Usually don't notify on initial check unless requested, but sticking to existing logic which seemed to not notify? 
-                // Existing logic: if lastContentHash != contentHash (which is true if null? No, explicit null check). 
-                // So initial check -> no notification.
             } else if (monitor.lastContentHash != contentHash) {
                 result = "CHANGED"
                 message = "Content changed!"
@@ -83,7 +88,6 @@ class WebChecker(
                     val llmResult = openRouterService.checkContent(monitor.llmPrompt, content)
                     if (llmResult) {
                         message += " LLM Condition Met."
-                        // Notify
                     } else {
                         message += " LLM Condition NOT Met."
                         shouldNotify = false // Don't notify if LLM condition fails
@@ -112,7 +116,8 @@ class WebChecker(
                     timestamp = now,
                     result = result,
                     message = message,
-                    content = content
+                    content = content,
+                    rawContent = rawContent
                 )
             )
 
@@ -132,7 +137,8 @@ class WebChecker(
                     timestamp = now,
                     result = "FAILURE",
                     message = "Error: ${e.message}",
-                    content = null
+                    content = null,
+                    rawContent = null
                 )
             )
         }
