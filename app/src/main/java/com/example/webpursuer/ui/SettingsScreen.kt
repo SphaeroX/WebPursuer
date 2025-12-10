@@ -176,11 +176,43 @@ fun SettingsScreen(
             Text("Advanced", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
             
+            val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+            val isIgnoringBatteryOptimizations = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                pm.isIgnoringBatteryOptimizations(context.packageName)
+            } else {
+                true
+            }
+
+            if (!isIgnoringBatteryOptimizations && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                Button(
+                    onClick = {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = android.net.Uri.parse("package:${context.packageName}")
+                        }
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    )
+                ) {
+                    Text("Disable Battery Optimization (Fix Background Issues)")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                 Text(
+                    text = "Battery Optimization: Disabled (Good)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                 Spacer(modifier = Modifier.height(16.dp))
+            }
+
             Button(
                 onClick = onLogsClick,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                   containerColor = MaterialTheme.colorScheme.tertiary
+                   containerColor = MaterialTheme.colorScheme.secondary
                 )
             ) {
                 Text("View System Logs")

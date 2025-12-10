@@ -23,7 +23,8 @@ class WebPursuerApp : Application() {
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "WebCheckWork",
-            ExistingPeriodicWorkPolicy.KEEP,
+
+            ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
     }
