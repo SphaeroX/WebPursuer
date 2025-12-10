@@ -1,43 +1,64 @@
 package com.example.webpursuer.ui
 
-import androidx.compose.foundation.clickable
+import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.example.webpursuer.data.GeneratedReport
 import com.example.webpursuer.data.GeneratedReportRepository
+import com.example.webpursuer.worker.ReportWorker
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ReportHistoryViewModel(
+    application: Application,
     private val repository: GeneratedReportRepository,
     private val reportId: Int
-) : ViewModel() {
+) : AndroidViewModel(application) {
+    
     val reports = repository.getReportsFor(reportId)
         .map { list -> list.sortedByDescending { it.timestamp } }
+
+    fun generateReportNow() {
+        val workManager = WorkManager.getInstance(getApplication())
+        val request = OneTimeWorkRequestBuilder<ReportWorker>()
+            .setInputData(workDataOf("report_id" to reportId))
+            .build()
+        workManager.enqueue(request)
+    }
 }
 
 class ReportHistoryViewModelFactory(
+    private val application: Application,
     private val repository: GeneratedReportRepository,
     private val reportId: Int
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ReportHistoryViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ReportHistoryViewModel(repository, reportId) as T
+            return ReportHistoryViewModel(application, repository, reportId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
@@ -51,10 +72,13 @@ fun ReportHistoryScreen(
     onNavigateBack: () -> Unit,
     onViewReport: (Int) -> Unit
 ) {
+    val context = LocalContext.current.applicationContext as Application
     val viewModel: ReportHistoryViewModel = viewModel(
-        factory = ReportHistoryViewModelFactory(repository, reportId)
+        factory = ReportHistoryViewModelFactory(context, repository, reportId)
     )
     val reports by viewModel.reports.collectAsState(initial = emptyList())
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -62,11 +86,22 @@ fun ReportHistoryScreen(
                 title = { Text("Report History") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        viewModel.generateReportNow()
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Report generation started")
+                        }
+                    }) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Run Now")
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         if (reports.isEmpty()) {
             Box(
