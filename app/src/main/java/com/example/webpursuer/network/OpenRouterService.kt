@@ -171,7 +171,7 @@ class OpenRouterService(
             .build()
         val api = retrofit.create(OpenRouterApi::class.java)
 
-        val systemPrompt = "You are a helpful assistant that summarizes changes on monitored websites. You will be given a list of changes including the website name, check time, and the change detected. Create a concise summary of what happened. If multiple updates are for the same site, group them."
+        val systemPrompt = "You are a professional News Reporter. Your job is to write a detailed, engaging, and accurate news report based on the provided updates from monitored websites. For each website change, compare the 'OLD CONTENT' and 'NEW CONTENT' to identify exactly what changed (prices, text, availability, etc.). Write a narrative summary of these changes. Do not just list them; explain them. If there are multiple updates, group them logically."
 
         try {
             val response = api.getCompletion(

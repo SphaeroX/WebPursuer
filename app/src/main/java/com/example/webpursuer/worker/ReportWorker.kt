@@ -111,11 +111,35 @@ class ReportWorker(
                 val monitor = monitorDao.getById(monitorId)
                 if (monitor != null) {
                     sb.append("Website: ${monitor.name} (${monitor.url})\n")
+                    
                     for (log in montiorLogs) {
                         sb.append("- At ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(log.timestamp))}: ${log.message}\n")
-                        if (!log.content.isNullOrBlank()) {
-                            val contentPreview = log.content.take(200).replace("\n", " ")
-                            sb.append("  Content snippet: $contentPreview...\n")
+                        
+                        // Fetch previous state for context
+                        val previousLog = checkLogDao.getPreviousLog(monitorId, log.timestamp)
+                        
+                        if (log.result == "CHANGED") {
+                            sb.append("  [CHANGE DETECTED]\n")
+                            if (previousLog?.content != null) {
+                                sb.append("  --- OLD CONTENT ---\n")
+                                sb.append(previousLog.content)
+                                sb.append("\n  -------------------\n")
+                            } else {
+                                sb.append("  (No previous content available for comparison)\n")
+                            }
+                            
+                            if (log.content != null) {
+                                sb.append("  --- NEW CONTENT ---\n")
+                                sb.append(log.content)
+                                sb.append("\n  -------------------\n")
+                            }
+                        } else if (!log.content.isNullOrBlank()) {
+                            // For non-change logs (e.g. failure or check), maybe just show a snippet? 
+                            // Or generally we only really care about CHANGES for the report if configured that way.
+                            // But keeping logical consistency:
+                            sb.append("  Current Content:\n")
+                            sb.append(log.content)
+                            sb.append("\n")
                         }
                     }
                     sb.append("\n")
