@@ -6,9 +6,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.webpursuer.worker.ReportWorker
-import kotlinx.coroutines.flow.Flow
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.Flow
 
 class ReportRepository(private val context: Context, private val reportDao: ReportDao) {
 
@@ -46,46 +46,52 @@ class ReportRepository(private val context: Context, private val reportDao: Repo
 
         // Calculate initial delay
         val now = Calendar.getInstance()
-        val target = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, report.scheduleHour)
-            set(Calendar.MINUTE, report.scheduleMinute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+        val target =
+                Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, report.scheduleHour)
+                    set(Calendar.MINUTE, report.scheduleMinute)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
 
         if (target.before(now)) {
-            // For Interval: If start time passed, we might want to start "next interval slot" or just now + interval?
+            // For Interval: If start time passed, we might want to start "next interval slot" or
+            // just now + interval?
             // "Specific Time" logic: Next day.
             // "Interval" logic: If user says start at 8:00 and run every 3h, and it's 10:00.
             // 8:00 passed. Next run should be 11:00.
             if (report.scheduleType == "INTERVAL") {
-                 val intervalMillis = report.intervalHours * 60 * 60 * 1000L
-                 while (target.before(now)) {
-                     target.timeInMillis += intervalMillis
-                 }
+                val intervalMillis = report.intervalHours * 60 * 60 * 1000L
+                while (target.before(now)) {
+                    target.timeInMillis += intervalMillis
+                }
             } else {
                 target.add(Calendar.DAY_OF_YEAR, 1)
             }
         }
-        
+
         val initialDelay = target.timeInMillis - now.timeInMillis
-        
-        val workRequest = if (report.scheduleType == "INTERVAL") {
-             PeriodicWorkRequestBuilder<ReportWorker>(report.intervalHours.toLong(), TimeUnit.HOURS)
-                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                .setInputData(workDataOf("report_id" to report.id))
-                .build()
-        } else {
-             PeriodicWorkRequestBuilder<ReportWorker>(24, TimeUnit.HOURS)
-                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                .setInputData(workDataOf("report_id" to report.id))
-                .build()
-        }
+
+        val workRequest =
+                if (report.scheduleType == "INTERVAL") {
+                    PeriodicWorkRequestBuilder<ReportWorker>(
+                                    report.intervalHours.toLong(),
+                                    TimeUnit.HOURS
+                            )
+                            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                            .setInputData(workDataOf("report_id" to report.id))
+                            .build()
+                } else {
+                    PeriodicWorkRequestBuilder<ReportWorker>(24, TimeUnit.HOURS)
+                            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                            .setInputData(workDataOf("report_id" to report.id))
+                            .build()
+                }
 
         workManager.enqueueUniquePeriodicWork(
-            workName,
-            ExistingPeriodicWorkPolicy.UPDATE,
-            workRequest
+                workName,
+                ExistingPeriodicWorkPolicy.REPLACE,
+                workRequest
         )
     }
 
