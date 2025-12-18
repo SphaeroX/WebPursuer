@@ -104,9 +104,15 @@ class ReportWorker(context: Context, workerParams: WorkerParameters) :
 You are a professional report generator.
 Please generate a specific Monitoring Report in Markdown based on the logs I provide below.
 
-Follow this visual style and structure EXACTLY (treat this as a template):
+Step 1: Analyze all logs to identify the most critical and relevant changes. Filter out trivial or repetitive information.
+Step 2: Follow this visual style and structure EXACTLY (treat this as a template):
 
 # Monitoring Report: <Appropriate Title based on content>
+
+## Top Highlights
+* **<Highlight 1>**
+* **<Highlight 2>**
+(List only the most important items here. If nothing is critical, omit this section.)
 
 ## Summary
 **<X> new activities** were registered... <Brief summary sentence>.
