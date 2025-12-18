@@ -33,50 +33,45 @@ import com.example.webpursuer.data.GeneratedReportRepository
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportContentScreen(
-    generatedReportId: Int,
-    repository: GeneratedReportRepository,
-    onNavigateBack: () -> Unit
+        generatedReportId: Int,
+        repository: GeneratedReportRepository,
+        onNavigateBack: () -> Unit
 ) {
     var report by remember { mutableStateOf<GeneratedReport?>(null) }
-    
-    LaunchedEffect(generatedReportId) {
-        report = repository.getReport(generatedReportId)
-    }
+
+    LaunchedEffect(generatedReportId) { report = repository.getReport(generatedReportId) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Report Content") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
+            topBar = {
+                TopAppBar(
+                        title = { Text("Report Content") },
+                        navigationIcon = {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                )
+                            }
+                        }
+                )
+            }
     ) { innerPadding ->
         val currentReport = report
         if (currentReport == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
         } else {
             SelectionContainer {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentPadding = PaddingValues(16.dp)
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentPadding = PaddingValues(16.dp)
                 ) {
                     item {
                         MarkdownText(
-                            markdown = currentReport.content,
-                            modifier = Modifier.fillMaxSize()
+                                markdown = currentReport.content,
+                                modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
@@ -89,10 +84,10 @@ fun ReportContentScreen(
 fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
     val styledText = remember(markdown) { parseMarkdown(markdown) }
     Text(
-        text = styledText,
-        modifier = modifier,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface
+            text = styledText,
+            modifier = modifier,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
     )
 }
 
@@ -100,45 +95,51 @@ fun parseMarkdown(text: String): AnnotatedString {
     return buildAnnotatedString {
         val lines = text.split("\n")
         lines.forEachIndexed { index, line ->
-            var currentLine = line
-            var isHeading = false
-            var isListItem = false
-
-            // Heading 1
-            if (currentLine.startsWith("# ")) {
-                pushStyle(SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold))
-                currentLine = currentLine.removePrefix("# ")
-                isHeading = true
-            } 
-            // Heading 2
-            else if (currentLine.startsWith("## ")) {
-                pushStyle(SpanStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold))
-                currentLine = currentLine.removePrefix("## ")
-                isHeading = true
-            }
-            // List Item
-            else if (currentLine.trim().startsWith("* ") || currentLine.trim().startsWith("- ")) {
-                append("• ")
-                currentLine = currentLine.trim().substring(2)
-                isListItem = true
+            var currentLine = line.trim()
+            if (currentLine.isEmpty()) {
+                if (index < lines.size - 1) append("\n")
+                return@forEachIndexed
             }
 
-            // Process inline formatting
-            val parts = splitByDelimiters(currentLine)
-            parts.forEach { part ->
-                when (part.type) {
-                    MarkdownType.BOLD -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(part.text) }
-                    MarkdownType.ITALIC -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(part.text) }
-                    MarkdownType.CODE -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = Color.LightGray.copy(alpha = 0.3f))) { append(part.text) }
-                    MarkdownType.LINK -> withStyle(SpanStyle(color = Color.Blue)) { append(part.text) } // Just visual for now
-                    MarkdownType.TEXT -> append(part.text)
+            // Headers
+            if (currentLine.startsWith("#")) {
+                val level = currentLine.takeWhile { it == '#' }.length
+                currentLine = currentLine.removePrefix("#".repeat(level)).trim()
+
+                val fontSize =
+                        when (level) {
+                            1 -> 24.sp
+                            2 -> 20.sp
+                            3 -> 18.sp
+                            else -> 16.sp
+                        }
+                val fontWeight = FontWeight.Bold
+
+                withStyle(SpanStyle(fontSize = fontSize, fontWeight = fontWeight)) {
+                    appendMarkdownLine(currentLine)
                 }
             }
-
-            if (isHeading) {
-                pop() // Pop heading style
+            // List Items
+            else if (currentLine.startsWith("* ") || currentLine.startsWith("- ")) {
+                currentLine = currentLine.substring(2)
+                append("• ")
+                appendMarkdownLine(currentLine)
             }
-            
+            // Code Blocks (Basic single line detection for indent/backticks at start)
+            else if (currentLine.startsWith("```") || currentLine.startsWith("    ")) {
+                currentLine = currentLine.removePrefix("```").removeSuffix("```").trim()
+                withStyle(
+                        SpanStyle(
+                                fontFamily = FontFamily.Monospace,
+                                background = Color.LightGray.copy(alpha = 0.3f)
+                        )
+                ) { append(currentLine) }
+            }
+            // Normal Text
+            else {
+                appendMarkdownLine(currentLine)
+            }
+
             if (index < lines.size - 1) {
                 append("\n")
             }
@@ -146,40 +147,72 @@ fun parseMarkdown(text: String): AnnotatedString {
     }
 }
 
-enum class MarkdownType { TEXT, BOLD, ITALIC, CODE, LINK }
+// Helper to handle inline bold/italic within a line
+fun AnnotatedString.Builder.appendMarkdownLine(line: String) {
+    val parts = splitByDelimiters(line)
+    parts.forEach { part ->
+        when (part.type) {
+            MarkdownType.BOLD ->
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(part.text) }
+            MarkdownType.ITALIC ->
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(part.text) }
+            MarkdownType.CODE ->
+                    withStyle(
+                            SpanStyle(
+                                    fontFamily = FontFamily.Monospace,
+                                    background = Color.LightGray.copy(alpha = 0.3f)
+                            )
+                    ) { append(part.text) }
+            MarkdownType.LINK -> withStyle(SpanStyle(color = Color.Blue)) { append(part.text) }
+            MarkdownType.TEXT -> append(part.text)
+        }
+    }
+}
+
+enum class MarkdownType {
+    TEXT,
+    BOLD,
+    ITALIC,
+    CODE,
+    LINK
+}
 
 data class MarkdownPart(val type: MarkdownType, val text: String)
 
 fun splitByDelimiters(text: String): List<MarkdownPart> {
     val parts = mutableListOf<MarkdownPart>()
     var currentIndex = 0
-    val regex = Regex("(\\*\\*.*?\\*\\*)|(\\*.*?\\*)|(`.*?`)|(\\[.*?\\]\\(.*?\\))") // Simplistic regex for Bold, Italic, Code, Link
+    // Regex matches: **bold**, *italic*, `code`, [link](url)
+    val regex = Regex("(\\*\\*.*?\\*\\*)|(\\*.*?\\*)|(`.*?`)|(\\[.*?\\]\\(.*?\\))")
 
     val matches = regex.findAll(text)
-    
+
     for (match in matches) {
         if (match.range.first > currentIndex) {
-            parts.add(MarkdownPart(MarkdownType.TEXT, text.substring(currentIndex, match.range.first)))
+            parts.add(
+                    MarkdownPart(MarkdownType.TEXT, text.substring(currentIndex, match.range.first))
+            )
         }
-        
+
         val value = match.value
         when {
-            value.startsWith("**") -> parts.add(MarkdownPart(MarkdownType.BOLD, value.removeSurrounding("**")))
-            value.startsWith("*") -> parts.add(MarkdownPart(MarkdownType.ITALIC, value.removeSurrounding("*")))
-            value.startsWith("`") -> parts.add(MarkdownPart(MarkdownType.CODE, value.removeSurrounding("`")))
+            value.startsWith("**") ->
+                    parts.add(MarkdownPart(MarkdownType.BOLD, value.removeSurrounding("**")))
+            value.startsWith("*") ->
+                    parts.add(MarkdownPart(MarkdownType.ITALIC, value.removeSurrounding("*")))
+            value.startsWith("`") ->
+                    parts.add(MarkdownPart(MarkdownType.CODE, value.removeSurrounding("`")))
             value.startsWith("[") -> {
                 val label = value.substringAfter("[").substringBefore("]")
-                // val url = value.substringAfter("(").substringBefore(")") 
-                // For now just show label colored
                 parts.add(MarkdownPart(MarkdownType.LINK, label))
             }
         }
         currentIndex = match.range.last + 1
     }
-    
+
     if (currentIndex < text.length) {
         parts.add(MarkdownPart(MarkdownType.TEXT, text.substring(currentIndex)))
     }
-    
+
     return parts
 }
