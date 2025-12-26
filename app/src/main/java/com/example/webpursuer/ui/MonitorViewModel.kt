@@ -4,9 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.webpursuer.data.AppDatabase
-import com.example.webpursuer.data.Monitor
 import com.example.webpursuer.data.CheckLog
 import com.example.webpursuer.data.Interaction
+import com.example.webpursuer.data.Monitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,12 +20,14 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     private val checkLogDao = database.checkLogDao()
     private val interactionDao = database.interactionDao()
 
-    val monitors: StateFlow<List<Monitor>> = monitorDao.getAll()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    val monitors: StateFlow<List<Monitor>> =
+            monitorDao
+                    .getAll()
+                    .stateIn(
+                            scope = viewModelScope,
+                            started = SharingStarted.WhileSubscribed(5000),
+                            initialValue = emptyList()
+                    )
 
     fun getLogsForMonitor(monitorId: Int): Flow<List<CheckLog>> {
         return checkLogDao.getLogsForMonitor(monitorId)
@@ -34,31 +36,40 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     fun addMonitor(monitor: Monitor, interactions: List<com.example.webpursuer.data.Interaction>) {
         viewModelScope.launch {
             val insertedId = monitorDao.insertAndReturnId(monitor)
-            
+
             val interactionsWithId = interactions.map { it.copy(monitorId = insertedId.toInt()) }
             interactionDao.insertAll(interactionsWithId)
         }
     }
 
     fun updateMonitor(monitor: Monitor) {
-        viewModelScope.launch {
-            monitorDao.update(monitor)
-        }
+        viewModelScope.launch { monitorDao.update(monitor) }
     }
 
     fun deleteMonitor(monitor: Monitor) {
-        viewModelScope.launch {
-            monitorDao.delete(monitor)
-        }
+        viewModelScope.launch { monitorDao.delete(monitor) }
     }
-    
+
     fun checkNow(monitor: Monitor) {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
             val logRepository = com.example.webpursuer.data.LogRepository(database.appLogDao())
-            val openRouterService = com.example.webpursuer.network.OpenRouterService(settingsRepository, logRepository)
-            val webChecker = com.example.webpursuer.worker.WebChecker(context, monitorDao, checkLogDao, interactionDao, openRouterService, settingsRepository, logRepository)
+            val openRouterService =
+                    com.example.webpursuer.network.OpenRouterService(
+                            settingsRepository,
+                            logRepository
+                    )
+            val webChecker =
+                    com.example.webpursuer.worker.WebChecker(
+                            context,
+                            monitorDao,
+                            checkLogDao,
+                            interactionDao,
+                            openRouterService,
+                            settingsRepository,
+                            logRepository
+                    )
             webChecker.checkMonitor(monitor, System.currentTimeMillis())
         }
     }
@@ -83,19 +94,31 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) {
             val monitors = monitorDao.getAllSync()
             if (monitors.isEmpty()) {
-                val defaultMonitor = Monitor(
-                    url = "https://www.unixtimestamp.com/",
-                    name = "Unix Timestamp",
-                    selector = "#main-segment > div.box > div > div.ui.two.column.grid > div > div:nth-child(2) > div > div.value.epoch",
-                    checkIntervalMinutes = 15,
-                    lastCheckTime = 0,
-                    enabled = true,
-                    llmEnabled = false,
-                    notificationsEnabled = true,
-                    scheduleType = "INTERVAL"
-                )
+                val defaultMonitor =
+                        Monitor(
+                                url = "https://www.unixtimestamp.com/",
+                                name = "Unix Timestamp",
+                                selector =
+                                        "#main-segment > div.box > div > div.ui.two.column.grid > div > div:nth-child(2) > div > div.value.epoch",
+                                checkIntervalMinutes = 15,
+                                lastCheckTime = 0,
+                                enabled = true,
+                                llmEnabled = false,
+                                notificationsEnabled = true,
+                                scheduleType = "INTERVAL"
+                        )
                 monitorDao.insert(defaultMonitor)
             }
         }
+    }
+
+    private val settingsRepository by lazy {
+        com.example.webpursuer.data.SettingsRepository(application)
+    }
+
+    val diffFilterMode: Flow<String> = settingsRepository.diffFilterMode
+
+    fun setDiffFilterMode(mode: String) {
+        viewModelScope.launch { settingsRepository.saveDiffFilterMode(mode) }
     }
 }

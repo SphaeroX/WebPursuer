@@ -189,7 +189,8 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
                 }
             }
 
-            val generatedReportContent = openRouterService.generateReport(sb.toString())
+            val prompt = sb.toString()
+            val generatedReportContent = openRouterService.generateReport(prompt)
 
             // Save to database
             val generatedReport =
@@ -197,7 +198,8 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
                             reportId = report.id,
                             timestamp = System.currentTimeMillis(),
                             content = generatedReportContent,
-                            summary = generatedReportContent.take(100) + "..."
+                            summary = generatedReportContent.take(100) + "...",
+                            debugPrompt = prompt
                     )
             val generatedId = database.generatedReportDao().insert(generatedReport)
 

@@ -5,20 +5,21 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "generated_reports",
-    foreignKeys = [
-        ForeignKey(
-            entity = Report::class,
-            parentColumns = ["id"],
-            childColumns = ["reportId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
+        tableName = "generated_reports",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = Report::class,
+                                parentColumns = ["id"],
+                                childColumns = ["reportId"],
+                                onDelete = ForeignKey.CASCADE
+                        )]
 )
 data class GeneratedReport(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val reportId: Int,
-    val timestamp: Long,
-    val content: String,
-    val summary: String
+        @PrimaryKey(autoGenerate = true) val id: Int = 0,
+        val reportId: Int,
+        val timestamp: Long,
+        val content: String,
+        val summary: String,
+        val debugPrompt: String? = null
 )

@@ -25,6 +25,7 @@ class SettingsRepository(private val context: Context) {
         val REPORT_TIME_HOUR = androidx.datastore.preferences.core.intPreferencesKey("report_time_hour")
         val LAST_REPORT_TIME = androidx.datastore.preferences.core.longPreferencesKey("last_report_time")
         val REPORT_MONITOR_SELECTION = androidx.datastore.preferences.core.stringSetPreferencesKey("report_monitor_selection")
+        val DIFF_FILTER_MODE = stringPreferencesKey("diff_filter_mode")
     }
 
     val apiKey: Flow<String?> = context.dataStore.data
@@ -73,6 +74,11 @@ class SettingsRepository(private val context: Context) {
     val reportMonitorSelection: Flow<Set<String>> = context.dataStore.data
         .map { preferences ->
             preferences[REPORT_MONITOR_SELECTION] ?: emptySet()
+        }
+
+    val diffFilterMode: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[DIFF_FILTER_MODE] ?: "ALL"
         }
 
     suspend fun saveApiKey(key: String) {
@@ -126,6 +132,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveReportMonitorSelection(selection: Set<String>) {
         context.dataStore.edit { preferences ->
             preferences[REPORT_MONITOR_SELECTION] = selection
+        }
+    }
+
+    suspend fun saveDiffFilterMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[DIFF_FILTER_MODE] = mode
         }
     }
 }

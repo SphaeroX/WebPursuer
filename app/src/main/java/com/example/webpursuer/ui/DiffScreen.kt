@@ -1,6 +1,7 @@
 package com.example.webpursuer.ui
 
-import androidx.compose.foundation.background
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,18 +10,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,13 +32,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.webpursuer.data.CheckLog
+import com.example.webpursuer.data.Monitor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -42,14 +45,19 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiffScreen(
-    checkLogId: Int,
-    monitorId: Int, // Can be used to fetch monitor name if needed
-    viewModel: MonitorViewModel,
-    onBackClick: () -> Unit
+        checkLogId: Int,
+        monitorId: Int, // Can be used to fetch monitor name if needed
+        viewModel: MonitorViewModel,
+        onBackClick: () -> Unit
 ) {
     var newLog by remember { mutableStateOf<CheckLog?>(null) }
     var oldLog by remember { mutableStateOf<CheckLog?>(null) }
+    var monitor by remember { mutableStateOf<Monitor?>(null) }
     var loading by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+
+    val diffFilterMode by viewModel.diffFilterMode.collectAsState(initial = "ALL")
+    var showFilterMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(checkLogId) {
         val log = viewModel.getCheckLog(checkLogId)
@@ -57,81 +65,142 @@ fun DiffScreen(
         if (log != null) {
             oldLog = viewModel.getPreviousCheckLog(log.monitorId, log.timestamp)
         }
+        monitor = viewModel.getMonitor(monitorId)
         loading = false
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text("Änderungen")
-                        // Could add Monitor Name here if fetched
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
+            topBar = {
+                TopAppBar(
+                        title = {
+                            Column {
+                                Text("Änderungen")
+                                // Could add Monitor Name here if fetched
+                            }
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onBackClick) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { showFilterMenu = true }) {
+                                Icon(
+                                        Icons.Default.List,
+                                        contentDescription = "Filter",
+                                        tint = Color.White
+                                )
+                            }
+                            DropdownMenu(
+                                    expanded = showFilterMenu,
+                                    onDismissRequest = { showFilterMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                        text = { Text("Alle anzeigen") },
+                                        onClick = {
+                                            viewModel.setDiffFilterMode("ALL")
+                                            showFilterMenu = false
+                                        }
+                                )
+                                DropdownMenuItem(
+                                        text = { Text("Nur Neue (Grün)") },
+                                        onClick = {
+                                            viewModel.setDiffFilterMode("NEW")
+                                            showFilterMenu = false
+                                        }
+                                )
+                                DropdownMenuItem(
+                                        text = { Text("Nur Entfernte (Rot)") },
+                                        onClick = {
+                                            viewModel.setDiffFilterMode("REMOVED")
+                                            showFilterMenu = false
+                                        }
+                                )
+                                DropdownMenuItem(
+                                        text = { Text("Nur Unveränderte") },
+                                        onClick = {
+                                            viewModel.setDiffFilterMode("UNCHANGED")
+                                            showFilterMenu = false
+                                        }
+                                )
+                            }
+
+                            if (monitor != null) {
+                                IconButton(
+                                        onClick = {
+                                            val intent =
+                                                    Intent(
+                                                            Intent.ACTION_VIEW,
+                                                            Uri.parse(monitor!!.url)
+                                                    )
+                                            context.startActivity(intent)
+                                        }
+                                ) {
+                                    Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                            contentDescription = "Open in Browser",
+                                            tint = Color.White
+                                    )
+                                }
+                            }
+                        },
+                        colors =
+                                TopAppBarDefaults.topAppBarColors(
+                                        containerColor = Color.Black,
+                                        titleContentColor = Color.White,
+                                        navigationIconContentColor = Color.White,
+                                        actionIconContentColor = Color.White
+                                )
                 )
-            )
-        },
-        containerColor = Color.Black // Dark background as per screenshot
+            },
+            containerColor = Color.Black // Dark background as per screenshot
     ) { innerPadding ->
         if (loading) {
             Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-            ) {
-                Text("Laden...", color = Color.White)
-            }
+                    modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            ) { Text("Laden...", color = Color.White) }
         } else if (newLog == null) {
-             Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                 horizontalAlignment = Alignment.CenterHorizontally,
-                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-            ) {
-                Text("Log nicht gefunden.", color = Color.White)
-            }
+            Column(
+                    modifier = Modifier.padding(innerPadding).fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            ) { Text("Log nicht gefunden.", color = Color.White) }
         } else {
             Column(modifier = Modifier.padding(innerPadding)) {
                 // Version Header
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        horizontalArrangement =
+                                androidx.compose.foundation.layout.Arrangement.SpaceBetween
                 ) {
                     Column {
                         Text("Vorherige", color = Color(0xFFE57373)) // Red-ish
                         oldLog?.let {
                             Text(
-                                SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault()).format(Date(it.timestamp)),
-                                color = Color(0xFFE57373),
-                                fontSize = 12.sp
+                                    SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault())
+                                            .format(Date(it.timestamp)),
+                                    color = Color(0xFFE57373),
+                                    fontSize = 12.sp
                             )
-                        } ?: Text("-", color = Color(0xFFE57373))
+                        }
+                                ?: Text("-", color = Color(0xFFE57373))
                     }
-                    
-                    Text("->", color = Color.Gray, modifier = Modifier.align(Alignment.CenterVertically))
+
+                    Text(
+                            "->",
+                            color = Color.Gray,
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                    )
 
                     Column(horizontalAlignment = Alignment.End) {
                         Text("Aktuell", color = Color(0xFF81C784)) // Green-ish
                         Text(
-                            SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault()).format(Date(newLog!!.timestamp)),
-                            color = Color(0xFF81C784),
-                            fontSize = 12.sp
+                                SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault())
+                                        .format(Date(newLog!!.timestamp)),
+                                color = Color(0xFF81C784),
+                                fontSize = 12.sp
                         )
                     }
                 }
@@ -142,35 +211,44 @@ fun DiffScreen(
 
                 if (hasRawContent) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Show Raw Content", color = Color.White, modifier = Modifier.weight(1f))
+                        Text(
+                                "Show Raw Content",
+                                color = Color.White,
+                                modifier = Modifier.weight(1f)
+                        )
                         androidx.compose.material3.Switch(
-                            checked = showRaw,
-                            onCheckedChange = { showRaw = it }
+                                checked = showRaw,
+                                onCheckedChange = { showRaw = it }
                         )
                     }
                 }
 
                 // Diff Content
-                val oldText = if (showRaw) (oldLog?.rawContent ?: oldLog?.content ?: "") else (oldLog?.content ?: "")
+                val oldText =
+                        if (showRaw) (oldLog?.rawContent ?: oldLog?.content ?: "")
+                        else (oldLog?.content ?: "")
                 val newText = if (showRaw) (newLog?.rawContent ?: "") else (newLog?.content ?: "")
-                val diffLines = GenerateDiff(oldText, newText)
+                val allDiffLines = GenerateDiff(oldText, newText)
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
-                ) {
-                    items(diffLines) { line ->
+                val filteredLines =
+                        when (diffFilterMode) {
+                            "NEW" -> allDiffLines.filter { it.color == Color(0xFF69F0AE) } // Green
+                            "REMOVED" ->
+                                    allDiffLines.filter { it.color == Color(0xFFFF5252) } // Red
+                            "UNCHANGED" -> allDiffLines.filter { it.color == Color.White }
+                            else -> allDiffLines
+                        }
+
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                    items(filteredLines) { line ->
                         Text(
-                            text = line.text,
-                            color = line.color,
-                            textDecoration = line.decoration,
-                            modifier = Modifier.fillMaxWidth()
+                                text = line.text,
+                                color = line.color,
+                                textDecoration = line.decoration,
+                                modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -179,32 +257,30 @@ fun DiffScreen(
     }
 }
 
-data class DiffLine(
-    val text: String,
-    val color: Color,
-    val decoration: TextDecoration? = null
-)
+data class DiffLine(val text: String, val color: Color, val decoration: TextDecoration? = null)
 
 fun GenerateDiff(oldText: String, newText: String): List<DiffLine> {
     val oldLines = oldText.lines()
     val newLines = newText.lines()
     val result = mutableListOf<DiffLine>()
 
-    // Very simple differ: Compare lines. 
+    // Very simple differ: Compare lines.
     // Ideally use a proper diff algorithm (Myers), but for now efficient enough for small texts
-    // Using a simplistic approach: 
+    // Using a simplistic approach:
     // If lines match, white.
     // If old has line not in new -> Removed (Red)
     // If new has line not in old -> Added (Green)
-    // This simple approach fails for shifts. 
-    // Let's use a slightly better heuristics: LCS is too complex to implement from scratch reliably in one go.
+    // This simple approach fails for shifts.
+    // Let's use a slightly better heuristics: LCS is too complex to implement from scratch reliably
+    // in one go.
     // Let's stick to a simple localized lookahead or just standard distinct lines if easy.
-    // Actually, for this specific user request ("like Web Alert"), a simple "What is added, What is removed" block is often used.
-    
+    // Actually, for this specific user request ("like Web Alert"), a simple "What is added, What is
+    // removed" block is often used.
+
     // Better Approach for this context:
-    // Just show the new text, but highlight added parts in Green. 
+    // Just show the new text, but highlight added parts in Green.
     // And show removed parts in Red (maybe interleaved?).
-    
+
     // Let's implement a basic LCS-based diff for lines.
     val dp = Array(oldLines.size + 1) { IntArray(newLines.size + 1) }
 
@@ -228,10 +304,14 @@ fun GenerateDiff(oldText: String, newText: String): List<DiffLine> {
             i--
             j--
         } else if (j > 0 && (i == 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-            tempResult.add(DiffLine(newLines[j - 1], Color(0xFF69F0AE), TextDecoration.Underline)) // Added
+            tempResult.add(
+                    DiffLine(newLines[j - 1], Color(0xFF69F0AE), TextDecoration.Underline)
+            ) // Added
             j--
         } else if (i > 0 && (j == 0 || dp[i][j - 1] < dp[i - 1][j])) {
-            tempResult.add(DiffLine(oldLines[i - 1], Color(0xFFFF5252), TextDecoration.LineThrough)) // Removed
+            tempResult.add(
+                    DiffLine(oldLines[i - 1], Color(0xFFFF5252), TextDecoration.LineThrough)
+            ) // Removed
             i--
         }
     }

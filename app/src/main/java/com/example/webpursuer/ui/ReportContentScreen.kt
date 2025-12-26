@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +39,7 @@ fun ReportContentScreen(
         onNavigateBack: () -> Unit
 ) {
     var report by remember { mutableStateOf<GeneratedReport?>(null) }
+    var showDebugDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(generatedReportId) { report = repository.getReport(generatedReportId) }
 
@@ -51,6 +53,13 @@ fun ReportContentScreen(
                                         Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Back"
                                 )
+                            }
+                        },
+                        actions = {
+                            if (report?.debugPrompt != null) {
+                                IconButton(onClick = { showDebugDialog = true }) {
+                                    Icon(Icons.Filled.Info, contentDescription = "Debug Info")
+                                }
                             }
                         }
                 )
@@ -77,6 +86,29 @@ fun ReportContentScreen(
                 }
             }
         }
+    }
+
+    if (showDebugDialog && report?.debugPrompt != null) {
+        AlertDialog(
+                onDismissRequest = { showDebugDialog = false },
+                confirmButton = {
+                    TextButton(onClick = { showDebugDialog = false }) { Text("Close") }
+                },
+                title = { Text("Debug Prompt") },
+                text = {
+                    SelectionContainer {
+                        LazyColumn {
+                            item {
+                                Text(
+                                        text = report!!.debugPrompt!!,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+        )
     }
 }
 
