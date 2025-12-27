@@ -1,7 +1,6 @@
 package com.example.webpursuer.network
 
 import retrofit2.http.Body
-import retrofit2.http.Headers
 import retrofit2.http.POST
 
 interface OpenRouterApi {
@@ -10,19 +9,15 @@ interface OpenRouterApi {
 }
 
 data class ChatRequest(
-    val model: String,
-    val messages: List<Message>
+        val model: String,
+        val messages: List<Message>,
+        val plugins: List<Plugin>? = null
 )
 
-data class Message(
-    val role: String,
-    val content: String
-)
+data class Plugin(val id: String, val max_results: Int? = null)
 
-data class ChatResponse(
-    val choices: List<Choice>
-)
+data class Message(val role: String, val content: String)
 
-data class Choice(
-    val message: Message
-)
+data class ChatResponse(val choices: List<Choice>)
+
+data class Choice(val message: Message)

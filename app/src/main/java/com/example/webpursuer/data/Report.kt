@@ -15,5 +15,6 @@ data class Report(
     val intervalHours: Int = 24, // For INTERVAL type
     val monitorIds: String, // Comma separated IDs
     val enabled: Boolean = true,
-    val lastRunTime: Long = 0L
+    val lastRunTime: Long = 0L,
+    @androidx.room.ColumnInfo(defaultValue = "0") val useWebSearch: Boolean = false
 )

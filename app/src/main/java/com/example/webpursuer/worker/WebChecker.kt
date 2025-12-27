@@ -9,22 +9,21 @@ import com.example.webpursuer.data.CheckLog
 import com.example.webpursuer.data.CheckLogDao
 import com.example.webpursuer.data.Monitor
 import com.example.webpursuer.data.MonitorDao
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 class WebChecker(
-    private val context: Context,
-    private val monitorDao: MonitorDao,
-    private val checkLogDao: CheckLogDao,
-    private val interactionDao: com.example.webpursuer.data.InteractionDao,
-    private val openRouterService: com.example.webpursuer.network.OpenRouterService,
-    private val settingsRepository: com.example.webpursuer.data.SettingsRepository,
-    private val logRepository: com.example.webpursuer.data.LogRepository
+        private val context: Context,
+        private val monitorDao: MonitorDao,
+        private val checkLogDao: CheckLogDao,
+        private val interactionDao: com.example.webpursuer.data.InteractionDao,
+        private val openRouterService: com.example.webpursuer.network.OpenRouterService,
+        private val settingsRepository: com.example.webpursuer.data.SettingsRepository,
+        private val logRepository: com.example.webpursuer.data.LogRepository
 ) {
 
     suspend fun checkMonitor(monitor: Monitor, now: Long) {
@@ -34,7 +33,10 @@ class WebChecker(
             var attempt = 0
             while (content.isBlank() && attempt < 3) {
                 if (attempt > 0) {
-                    android.util.Log.d("WebChecker", "Retry load content attempt ${attempt + 1} for ${monitor.name}")
+                    android.util.Log.d(
+                            "WebChecker",
+                            "Retry load content attempt ${attempt + 1} for ${monitor.name}"
+                    )
                     kotlinx.coroutines.delay(2000)
                 }
                 content = loadContent(monitor.url, monitor.selector, interactions)
@@ -42,28 +44,37 @@ class WebChecker(
             }
 
             if (content.isBlank()) {
-                val errorMsg = "Empty content loaded after $attempt attempts for monitor ${monitor.name} (${monitor.url})."
+                val errorMsg =
+                        "Empty content loaded after $attempt attempts for monitor ${monitor.name} (${monitor.url})."
                 android.util.Log.e("WebChecker", errorMsg)
                 logRepository.logError("MONITOR", errorMsg)
-                
-                 checkLogDao.insert(
-                    CheckLog(
-                        monitorId = monitor.id,
-                        timestamp = now,
-                        result = "FAILURE",
-                        message = errorMsg,
-                        content = null,
-                        rawContent = null
-                    )
+
+                checkLogDao.insert(
+                        CheckLog(
+                                monitorId = monitor.id,
+                                timestamp = now,
+                                result = "FAILURE",
+                                message = errorMsg,
+                                content = null,
+                                rawContent = null
+                        )
                 )
-                return 
+                return
             }
 
             var rawContent: String? = null
             if (monitor.useAiInterpreter) {
                 rawContent = content
-                logRepository.logInfo("MONITOR", "Interpreting content with AI for ${monitor.name}...")
-                content = openRouterService.interpretContent(monitor.aiInterpreterInstruction, content)
+                logRepository.logInfo(
+                        "MONITOR",
+                        "Interpreting content with AI for ${monitor.name}..."
+                )
+                content =
+                        openRouterService.interpretContent(
+                                monitor.aiInterpreterInstruction,
+                                content,
+                                monitor.useWebSearch
+                        )
             }
 
             val contentHash = hash(content)
@@ -83,9 +94,14 @@ class WebChecker(
                 message = "Content changed!"
                 newHash = contentHash
                 shouldNotify = true
-                
+
                 if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
-                    val llmResult = openRouterService.checkContent(monitor.llmPrompt, content)
+                    val llmResult =
+                            openRouterService.checkContent(
+                                    monitor.llmPrompt,
+                                    content,
+                                    monitor.useWebSearch
+                            )
                     if (llmResult) {
                         message += " LLM Condition Met."
                     } else {
@@ -102,103 +118,142 @@ class WebChecker(
             }
 
             // Update Monitor
-            monitorDao.update(
-                monitor.copy(
-                    lastCheckTime = now,
-                    lastContentHash = newHash
-                )
-            )
+            monitorDao.update(monitor.copy(lastCheckTime = now, lastContentHash = newHash))
 
             // Log Result
-            val logId = checkLogDao.insert(
-                CheckLog(
-                    monitorId = monitor.id,
-                    timestamp = now,
-                    result = result,
-                    message = message,
-                    content = content,
-                    rawContent = rawContent
-                )
-            )
+            val logId =
+                    checkLogDao.insert(
+                            CheckLog(
+                                    monitorId = monitor.id,
+                                    timestamp = now,
+                                    result = result,
+                                    message = message,
+                                    content = content,
+                                    rawContent = rawContent
+                            )
+                    )
 
-            logRepository.logInfo("MONITOR", "Check finished for ${monitor.name}: $result - $message")
+            logRepository.logInfo(
+                    "MONITOR",
+                    "Check finished for ${monitor.name}: $result - $message"
+            )
 
             // Send Notification if needed
             if (result == "CHANGED" && shouldNotify) {
                 sendNotification(monitor.id, logId.toInt(), "Monitor Update", message)
             }
-
         } catch (e: Exception) {
             e.printStackTrace()
-            logRepository.logError("MONITOR", "Unexpected error checking ${monitor.name}: ${e.message}", e.stackTraceToString())
+            logRepository.logError(
+                    "MONITOR",
+                    "Unexpected error checking ${monitor.name}: ${e.message}",
+                    e.stackTraceToString()
+            )
             checkLogDao.insert(
-                CheckLog(
-                    monitorId = monitor.id,
-                    timestamp = now,
-                    result = "FAILURE",
-                    message = "Error: ${e.message}",
-                    content = null,
-                    rawContent = null
-                )
+                    CheckLog(
+                            monitorId = monitor.id,
+                            timestamp = now,
+                            result = "FAILURE",
+                            message = "Error: ${e.message}",
+                            content = null,
+                            rawContent = null
+                    )
             )
         }
     }
 
-    private suspend fun loadContent(url: String, selector: String, interactions: List<com.example.webpursuer.data.Interaction>): String = withContext(Dispatchers.Main) {
-        suspendCancellableCoroutine { continuation ->
-            val webView = WebView(context)
-            webView.settings.javaScriptEnabled = true
-            webView.settings.domStorageEnabled = true
+    private suspend fun loadContent(
+            url: String,
+            selector: String,
+            interactions: List<com.example.webpursuer.data.Interaction>
+    ): String =
+            withContext(Dispatchers.Main) {
+                suspendCancellableCoroutine { continuation ->
+                    val webView = WebView(context)
+                    webView.settings.javaScriptEnabled = true
+                    webView.settings.domStorageEnabled = true
 
-            webView.webViewClient = object : WebViewClient() {
-                var pageLoaded = false
+                    webView.webViewClient =
+                            object : WebViewClient() {
+                                var pageLoaded = false
 
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    if (pageLoaded) return
-                    pageLoaded = true
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    if (pageLoaded) return
+                                    pageLoaded = true
 
-                    // Execute interactions sequentially
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        executeInteractions(webView, interactions, 0) {
-                            // After all interactions, extract content
-                            extractContent(webView, selector) { text ->
-                                if (continuation.isActive) {
-                                    continuation.resume(text)
+                                    // Execute interactions sequentially
+                                    Handler(Looper.getMainLooper())
+                                            .postDelayed(
+                                                    {
+                                                        executeInteractions(
+                                                                webView,
+                                                                interactions,
+                                                                0
+                                                        ) {
+                                                            // After all interactions, extract
+                                                            // content
+                                                            extractContent(webView, selector) { text
+                                                                ->
+                                                                if (continuation.isActive) {
+                                                                    continuation.resume(text)
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    2000
+                                            ) // Initial wait
+                                }
+
+                                override fun onReceivedError(
+                                        view: WebView?,
+                                        errorCode: Int,
+                                        description: String?,
+                                        failingUrl: String?
+                                ) {
+                                    // Handle error
                                 }
                             }
-                        }
-                    }, 2000) // Initial wait
-                }
-                
-                override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
-                     // Handle error
+
+                    webView.loadUrl(url)
                 }
             }
-            
-            webView.loadUrl(url)
-        }
-    }
 
-    private fun executeInteractions(webView: WebView, interactions: List<com.example.webpursuer.data.Interaction>, index: Int, onComplete: () -> Unit) {
+    private fun executeInteractions(
+            webView: WebView,
+            interactions: List<com.example.webpursuer.data.Interaction>,
+            index: Int,
+            onComplete: () -> Unit
+    ) {
         if (index >= interactions.size) {
             onComplete()
             return
         }
 
         val interaction = interactions[index]
-        val js = when (interaction.type) {
-            "click" -> "document.querySelector('${interaction.selector}').click();"
-            "input" -> "document.querySelector('${interaction.selector}').value = '${interaction.value}'; document.querySelector('${interaction.selector}').dispatchEvent(new Event('change'));"
-            else -> ""
-        }
+        val js =
+                when (interaction.type) {
+                    "click" -> "document.querySelector('${interaction.selector}').click();"
+                    "input" ->
+                            "document.querySelector('${interaction.selector}').value = '${interaction.value}'; document.querySelector('${interaction.selector}').dispatchEvent(new Event('change'));"
+                    else -> ""
+                }
 
         if (js.isNotEmpty()) {
             webView.evaluateJavascript(js) {
                 // Wait a bit after interaction
-                Handler(Looper.getMainLooper()).postDelayed({
-                    executeInteractions(webView, interactions, index + 1, onComplete)
-                }, 2000) // 2 seconds delay between actions
+                Handler(Looper.getMainLooper())
+                        .postDelayed(
+                                {
+                                    executeInteractions(
+                                            webView,
+                                            interactions,
+                                            index + 1,
+                                            onComplete
+                                    )
+                                },
+                                2000
+                        ) // 2 seconds delay between actions
             }
         } else {
             executeInteractions(webView, interactions, index + 1, onComplete)
@@ -206,7 +261,8 @@ class WebChecker(
     }
 
     private fun extractContent(webView: WebView, selector: String, callback: (String) -> Unit) {
-        val js = """
+        val js =
+                """
             (function() {
                 var element = document.querySelector('$selector');
                 if (!element) return '';
@@ -264,20 +320,21 @@ class WebChecker(
                 return getRecursiveText(element).replace(/\n\s*\n/g, '\n').trim();
             })();
         """.trimIndent()
-        
+
         webView.evaluateJavascript(js) { result ->
-            val text = if (result != null && result != "null") {
-                 if (result.startsWith("\"") && result.endsWith("\"")) {
-                    result.substring(1, result.length - 1)
-                        .replace("\\n", "\n")
-                        .replace("\\\"", "\"")
-                        .replace("\\\\", "\\")
-                 } else {
-                     result
-                 }
-            } else {
-                ""
-            }
+            val text =
+                    if (result != null && result != "null") {
+                        if (result.startsWith("\"") && result.endsWith("\"")) {
+                            result.substring(1, result.length - 1)
+                                    .replace("\\n", "\n")
+                                    .replace("\\\"", "\"")
+                                    .replace("\\\\", "\\")
+                        } else {
+                            result
+                        }
+                    } else {
+                        ""
+                    }
             callback(text)
         }
     }
@@ -287,7 +344,12 @@ class WebChecker(
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    private suspend fun sendNotification(monitorId: Int, logId: Int, title: String, message: String) {
+    private suspend fun sendNotification(
+            monitorId: Int,
+            logId: Int,
+            title: String,
+            message: String
+    ) {
         // Check if notifications are enabled globally
         val isGloballyEnabled = settingsRepository.notificationsEnabled.first()
         if (!isGloballyEnabled) {
@@ -301,29 +363,39 @@ class WebChecker(
             return
         }
 
-        val intent = android.content.Intent(context, com.example.webpursuer.MainActivity::class.java).apply {
-            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("monitorId", monitorId)
-            putExtra("checkLogId", logId)
-        }
-        val pendingIntent: android.app.PendingIntent = android.app.PendingIntent.getActivity(
-            context, monitorId, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val intent =
+                android.content.Intent(context, com.example.webpursuer.MainActivity::class.java)
+                        .apply {
+                            flags =
+                                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            putExtra("monitorId", monitorId)
+                            putExtra("checkLogId", logId)
+                        }
+        val pendingIntent: android.app.PendingIntent =
+                android.app.PendingIntent.getActivity(
+                        context,
+                        monitorId,
+                        intent,
+                        android.app.PendingIntent.FLAG_IMMUTABLE or
+                                android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                )
 
-        val builder = androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Changes found")
-            .setContentText("Content changed for ${monitor.name}")
-            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
+        val builder =
+                androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
+                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                        .setContentTitle("Changes found")
+                        .setContentText("Content changed for ${monitor.name}")
+                        .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
+                        .setContentIntent(pendingIntent)
+                        .setAutoCancel(true)
 
         try {
             with(androidx.core.app.NotificationManagerCompat.from(context)) {
                 if (androidx.core.content.ContextCompat.checkSelfPermission(
-                        context,
-                        android.Manifest.permission.POST_NOTIFICATIONS
-                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                context,
+                                android.Manifest.permission.POST_NOTIFICATIONS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
                 ) {
                     notify(monitorId, builder.build())
                 }

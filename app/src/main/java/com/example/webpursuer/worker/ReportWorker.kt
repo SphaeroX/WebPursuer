@@ -190,7 +190,8 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
             }
 
             val prompt = sb.toString()
-            val generatedReportContent = openRouterService.generateReport(prompt)
+            val generatedReportContent =
+                    openRouterService.generateReport(prompt, report.useWebSearch)
 
             // Save to database
             val generatedReport =

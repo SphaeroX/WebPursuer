@@ -19,5 +19,6 @@ data class Monitor(
     val scheduleType: String = "INTERVAL", // INTERVAL or DAILY
     val checkTime: String? = null, // HH:mm for DAILY
     @androidx.room.ColumnInfo(defaultValue = "0") val useAiInterpreter: Boolean = false,
-    @androidx.room.ColumnInfo(defaultValue = "'Summarize the key information.'") val aiInterpreterInstruction: String = "Summarize the key information."
+    @androidx.room.ColumnInfo(defaultValue = "'Summarize the key information.'") val aiInterpreterInstruction: String = "Summarize the key information.",
+    @androidx.room.ColumnInfo(defaultValue = "0") val useWebSearch: Boolean = false
 )
