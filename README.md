@@ -3,6 +3,10 @@
 ## Overview
 WebPursuer is a native Android application that allows users to monitor websites for changes. Users can browse websites using an internal browser, record interactions (like logins or clicks), and select specific areas of a webpage to monitor. If changes are detected in these areas, the user is notified via push notification.
 
+
+## Demo
+[![WebPursuer Demo](http://img.youtube.com/vi/xNKxBWUUmSA/0.jpg)](https://youtu.be/xNKxBWUUmSA)
+
 ## Key Features
 1.  **Internal Browser & Recorder**:
     *   Navigate to any URL.
