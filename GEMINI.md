@@ -67,6 +67,13 @@ Um das Projekt ohne Android Studio zu bauen und zu debuggen, können folgende Be
 *   **Compose in MainActivity**: Wenn `viewModel()` in einer Activity verwendet wird, muss dies innerhalb eines `@Composable` Kontexts geschehen (z.B. innerhalb von `setContent { ... }`), nicht direkt in `onCreate` oder Callbacks, die keinen Composable-Scope haben.
 *   **Encoding Probleme**: Bei der Analyse von Logs mit `findstr` kann es zu Encoding-Problemen kommen (Unicode). Nutzen Sie stattdessen PowerShell's `Select-String` oder `type file.txt`.
 
+### Git Workflow & Commit Messages
+Zur Sicherstellung einer sauberen Projekthistorie ist bei jeder Aktualisierung des Codes folgende Regel zu beachten:
+
+* **Commit Message**: Am Ende der Walkthrough Datei muss zwingend ein Vorschlag für eine passende Commit Message stehen.
+* **Sprache**: Die Nachricht muss auf **Englisch** verfasst sein.
+* **Format**: Es soll nur der reine Nachrichtentext angegeben werden (ohne `git commit` Befehle), um ein direktes Kopieren zu ermöglichen.
+
 > [!IMPORTANT]
 > **Automatische Aktualisierung**: Diese Datei (`GEMINI.md`) soll bei wichtigen neuen Erkenntnissen, insbesondere bezüglich Build-Konfigurationen, Fehlern und deren Lösungen, automatisch aktualisiert werden, um zukünftiges Debugging zu erleichtern.
 > Nachdem du die Dateien geändert hast, solltest du die App vor dem Abschluss immer bauen und testen. Benutze hierfür `.\gradlew assembleDebug -q`, damit die Ausgabe kurz ist und du sie nicht extra in eine Datei schreiben musst.
