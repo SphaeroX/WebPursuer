@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,10 +56,36 @@ fun ReportContentScreen(
                             }
                         },
                         actions = {
-                            if (report?.debugPrompt != null) {
-                                IconButton(onClick = { showDebugDialog = true }) {
-                                    Icon(Icons.Filled.Info, contentDescription = "Debug Info")
+                            var showMenu by remember { mutableStateOf(false) }
+                            val context = androidx.compose.ui.platform.LocalContext.current
+
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More")
+                            }
+
+                            DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                            ) {
+                                if (report?.debugPrompt != null) {
+                                    DropdownMenuItem(
+                                            text = { Text("Debug Info") },
+                                            onClick = {
+                                                showMenu = false
+                                                showDebugDialog = true
+                                            }
+                                    )
                                 }
+                                DropdownMenuItem(
+                                        text = { Text("PDF Export") },
+                                        onClick = {
+                                            showMenu = false
+                                            report?.let {
+                                                com.example.webpursuer.utils.PdfExportManager
+                                                        .exportReportAsPdf(context, it)
+                                            }
+                                        }
+                                )
                             }
                         }
                 )
