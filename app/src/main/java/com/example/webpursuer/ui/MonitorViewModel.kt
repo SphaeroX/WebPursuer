@@ -33,6 +33,10 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         return checkLogDao.getLogsForMonitor(monitorId)
     }
 
+    fun getLogsForMonitorFiltered(monitorId: Int): Flow<List<CheckLog>> {
+        return checkLogDao.getLogsForMonitorFiltered(monitorId)
+    }
+
     fun addMonitor(monitor: Monitor, interactions: List<com.example.webpursuer.data.Interaction>) {
         viewModelScope.launch {
             val insertedId = monitorDao.insertAndReturnId(monitor)

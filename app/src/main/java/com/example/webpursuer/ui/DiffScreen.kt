@@ -66,7 +66,7 @@ fun DiffScreen(
     val diffFilterMode by viewModel.diffFilterMode.collectAsState(initial = "ALL")
 
     // State for navigation
-    val logs by viewModel.getLogsForMonitor(monitorId).collectAsState(initial = emptyList())
+    val logs by viewModel.getLogsForMonitorFiltered(monitorId).collectAsState(initial = emptyList())
     var monitor by remember { mutableStateOf<Monitor?>(null) }
 
     // Current Index in the logs list (0 = Newest)
