@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.webpursuer.data.CheckLog
@@ -132,68 +133,250 @@ fun MonitorDetailScreen(
                                                 // Schedule Settings
                                                 Text(
                                                         "Schedule Type",
-                                                        style = MaterialTheme.typography.titleSmall
+                                                        style = MaterialTheme.typography.titleMedium
                                                 )
-                                                Row(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(vertical = 8.dp),
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        RadioButton(
-                                                                selected =
-                                                                        monitor.scheduleType ==
-                                                                                "INTERVAL",
-                                                                onClick = {
-                                                                        viewModel.updateMonitor(
-                                                                                monitor.copy(
-                                                                                        scheduleType =
-                                                                                                "INTERVAL"
-                                                                                )
-                                                                        )
-                                                                }
-                                                        )
-                                                        Text("Interval")
-                                                        Spacer(modifier = Modifier.width(16.dp))
-                                                        RadioButton(
-                                                                selected =
-                                                                        monitor.scheduleType ==
-                                                                                "DAILY",
-                                                                onClick = {
-                                                                        val newCheckTime =
-                                                                                monitor.checkTime
-                                                                                        ?: run {
-                                                                                                val cal =
-                                                                                                        Calendar.getInstance()
-                                                                                                String.format(
-                                                                                                        Locale.getDefault(),
-                                                                                                        "%02d:%02d",
-                                                                                                        cal.get(
-                                                                                                                Calendar.HOUR_OF_DAY
-                                                                                                        ),
-                                                                                                        cal.get(
-                                                                                                                Calendar.MINUTE
-                                                                                                        )
-                                                                                                )
-                                                                                        }
-                                                                        viewModel.updateMonitor(
-                                                                                monitor.copy(
-                                                                                        scheduleType =
-                                                                                                "DAILY",
-                                                                                        checkTime =
-                                                                                                newCheckTime
-                                                                                )
-                                                                        )
-                                                                }
-                                                        )
-                                                        Text("Daily")
+
+                                                // Update state variables to use properties from
+                                                // monitor
+                                                var scheduleType by remember {
+                                                        mutableStateOf(monitor.scheduleType)
+                                                }
+                                                var scheduleHour by remember {
+                                                        mutableIntStateOf(monitor.scheduleHour)
+                                                }
+                                                var scheduleMinute by remember {
+                                                        mutableIntStateOf(monitor.scheduleMinute)
+                                                }
+                                                var scheduleDays by remember {
+                                                        mutableIntStateOf(monitor.scheduleDays)
                                                 }
 
-                                                if (monitor.scheduleType == "INTERVAL") {
-                                                        // Local state for interval text to allow
-                                                        // typing like "30" without
-                                                        // jumping
+                                                // Schedule Type Dropdown
+                                                val options =
+                                                        listOf(
+                                                                "Specific Time (Weekly/Daily)" to
+                                                                        "SPECIFIC_TIME",
+                                                                "Interval" to "INTERVAL"
+                                                        )
+                                                // Map legacy "DAILY" to "SPECIFIC_TIME" for UI
+                                                // display if needed, or just let it be
+                                                val effectiveScheduleType =
+                                                        if (scheduleType == "DAILY") "SPECIFIC_TIME"
+                                                        else scheduleType
+
+                                                val selectedOptionText =
+                                                        options
+                                                                .find {
+                                                                        it.second ==
+                                                                                effectiveScheduleType
+                                                                }
+                                                                ?.first
+                                                                ?: options[0].first
+                                                var expandedDropdown by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                Box(
+                                                        modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                        .padding(vertical = 8.dp)
+                                                ) {
+                                                        ExposedDropdownMenuBox(
+                                                                expanded = expandedDropdown,
+                                                                onExpandedChange = {
+                                                                        expandedDropdown =
+                                                                                !expandedDropdown
+                                                                },
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                                OutlinedTextField(
+                                                                        modifier =
+                                                                                Modifier.menuAnchor()
+                                                                                        .fillMaxWidth(),
+                                                                        readOnly = true,
+                                                                        value = selectedOptionText,
+                                                                        onValueChange = {},
+                                                                        label = {
+                                                                                Text(
+                                                                                        "Schedule Type"
+                                                                                )
+                                                                        },
+                                                                        trailingIcon = {
+                                                                                ExposedDropdownMenuDefaults
+                                                                                        .TrailingIcon(
+                                                                                                expanded =
+                                                                                                        expandedDropdown
+                                                                                        )
+                                                                        },
+                                                                        colors =
+                                                                                ExposedDropdownMenuDefaults
+                                                                                        .outlinedTextFieldColors(),
+                                                                )
+                                                                ExposedDropdownMenu(
+                                                                        expanded = expandedDropdown,
+                                                                        onDismissRequest = {
+                                                                                expandedDropdown =
+                                                                                        false
+                                                                        },
+                                                                ) {
+                                                                        options.forEach {
+                                                                                selectionOption ->
+                                                                                DropdownMenuItem(
+                                                                                        text = {
+                                                                                                Text(
+                                                                                                        selectionOption
+                                                                                                                .first
+                                                                                                )
+                                                                                        },
+                                                                                        onClick = {
+                                                                                                scheduleType =
+                                                                                                        selectionOption
+                                                                                                                .second
+                                                                                                expandedDropdown =
+                                                                                                        false
+                                                                                                // Update database immediately
+                                                                                                viewModel
+                                                                                                        .updateMonitor(
+                                                                                                                monitor.copy(
+                                                                                                                        scheduleType =
+                                                                                                                                selectionOption
+                                                                                                                                        .second
+                                                                                                                )
+                                                                                                        )
+                                                                                        },
+                                                                                        contentPadding =
+                                                                                                ExposedDropdownMenuDefaults
+                                                                                                        .ItemContentPadding,
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
+                                                val context = LocalContext.current
+                                                val timePickerDialog =
+                                                        android.app.TimePickerDialog(
+                                                                context,
+                                                                { _, hour: Int, minute: Int ->
+                                                                        scheduleHour = hour
+                                                                        scheduleMinute = minute
+                                                                        viewModel.updateMonitor(
+                                                                                monitor.copy(
+                                                                                        scheduleHour =
+                                                                                                hour,
+                                                                                        scheduleMinute =
+                                                                                                minute
+                                                                                )
+                                                                        )
+                                                                },
+                                                                scheduleHour,
+                                                                scheduleMinute,
+                                                                true
+                                                        )
+
+                                                if (effectiveScheduleType == "SPECIFIC_TIME") {
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        text =
+                                                                                "Time: ${String.format(Locale.getDefault(), "%02d:%02d", scheduleHour, scheduleMinute)}",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .bodyLarge
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        16.dp
+                                                                                )
+                                                                )
+                                                                Button(
+                                                                        onClick = {
+                                                                                timePickerDialog
+                                                                                        .show()
+                                                                        }
+                                                                ) { Text("Set Time") }
+                                                        }
+
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        Text(
+                                                                "Repeat on:",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .bodyMedium
+                                                        )
+                                                        // Day Selection
+                                                        val days =
+                                                                listOf(
+                                                                        "Mon",
+                                                                        "Tue",
+                                                                        "Wed",
+                                                                        "Thu",
+                                                                        "Fri",
+                                                                        "Sat",
+                                                                        "Sun"
+                                                                )
+                                                        Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement =
+                                                                        Arrangement.SpaceBetween
+                                                        ) {
+                                                                days.forEachIndexed { index, dayName
+                                                                        ->
+                                                                        val mask = 1 shl index
+                                                                        val isSelected =
+                                                                                (scheduleDays and
+                                                                                        mask) != 0
+                                                                        Column(
+                                                                                horizontalAlignment =
+                                                                                        Alignment
+                                                                                                .CenterHorizontally
+                                                                        ) {
+                                                                                Checkbox(
+                                                                                        checked =
+                                                                                                isSelected,
+                                                                                        onCheckedChange = {
+                                                                                                checked
+                                                                                                ->
+                                                                                                val newDays =
+                                                                                                        if (checked
+                                                                                                        ) {
+                                                                                                                scheduleDays or
+                                                                                                                        mask
+                                                                                                        } else {
+                                                                                                                scheduleDays and
+                                                                                                                        mask.inv()
+                                                                                                        }
+                                                                                                scheduleDays =
+                                                                                                        newDays
+                                                                                                viewModel
+                                                                                                        .updateMonitor(
+                                                                                                                monitor.copy(
+                                                                                                                        scheduleDays =
+                                                                                                                                newDays
+                                                                                                                )
+                                                                                                        )
+                                                                                        }
+                                                                                )
+                                                                                Text(
+                                                                                        dayName,
+                                                                                        style =
+                                                                                                MaterialTheme
+                                                                                                        .typography
+                                                                                                        .labelSmall
+                                                                                )
+                                                                        }
+                                                                }
+                                                        }
+                                                } else {
+                                                        // INTERVAL
+                                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                                        // Local state for interval text
                                                         var intervalText by
                                                                 remember(
                                                                         monitor.checkIntervalMinutes
@@ -218,8 +401,7 @@ fun MonitorDetailScreen(
                                                                 value = intervalText,
                                                                 onValueChange = { input ->
                                                                         intervalText = input
-                                                                        // Parse input like "1h",
-                                                                        // "15m", "1h 30m"
+                                                                        // Parse input logic
                                                                         var totalMinutes = 0L
                                                                         val hourMatch =
                                                                                 Regex("(\\d+)\\s*h")
@@ -244,8 +426,6 @@ fun MonitorDetailScreen(
                                                                                                 .toLongOrNull()
                                                                                                 ?: 0)
                                                                         }
-
-                                                                        // Fallback for just numbers
                                                                         if (totalMinutes == 0L &&
                                                                                         input.all {
                                                                                                 it.isDigit()
@@ -279,87 +459,40 @@ fun MonitorDetailScreen(
                                                                         )
                                                                 }
                                                         )
-                                                } else {
-                                                        // Daily Time Selection
-                                                        val context =
-                                                                androidx.compose.ui.platform
-                                                                        .LocalContext.current
-                                                        val calendar = Calendar.getInstance()
-                                                        val currentHour =
-                                                                calendar.get(Calendar.HOUR_OF_DAY)
-                                                        val currentMinute =
-                                                                calendar.get(Calendar.MINUTE)
 
-                                                        var timeText by
-                                                                remember(monitor.checkTime) {
-                                                                        mutableStateOf(
-                                                                                monitor.checkTime
-                                                                                        ?: String.format(
-                                                                                                "%02d:%02d",
-                                                                                                currentHour,
-                                                                                                currentMinute
-                                                                                        )
-                                                                        )
-                                                                }
-
-                                                        val timePickerDialog =
-                                                                android.app.TimePickerDialog(
-                                                                        context,
-                                                                        { _, hourOfDay, minute ->
-                                                                                val selectedTime =
-                                                                                        String.format(
-                                                                                                "%02d:%02d",
-                                                                                                hourOfDay,
-                                                                                                minute
-                                                                                        )
-                                                                                timeText =
-                                                                                        selectedTime
-                                                                                viewModel
-                                                                                        .updateMonitor(
-                                                                                                monitor.copy(
-                                                                                                        checkTime =
-                                                                                                                selectedTime
-                                                                                                )
-                                                                                        )
-                                                                        },
-                                                                        currentHour,
-                                                                        currentMinute,
-                                                                        true // 24 hour format
-                                                                )
-
-                                                        OutlinedTextField(
-                                                                value = timeText,
-                                                                onValueChange = {
-                                                                }, // Read only, click sets it
-                                                                label = { Text("Time (HH:mm)") },
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                readOnly = true,
-                                                                interactionSource =
-                                                                        remember {
-                                                                                androidx.compose
-                                                                                        .foundation
-                                                                                        .interaction
-                                                                                        .MutableInteractionSource()
-                                                                        }
-                                                                                .also {
-                                                                                        interactionSource
-                                                                                        ->
-                                                                                        LaunchedEffect(
-                                                                                                interactionSource
-                                                                                        ) {
-                                                                                                interactionSource
-                                                                                                        .interactions
-                                                                                                        .collect {
-                                                                                                                if (it is
-                                                                                                                                androidx.compose.foundation.interaction.PressInteraction.Release
-                                                                                                                ) {
-                                                                                                                        timePickerDialog
-                                                                                                                                .show()
-                                                                                                                }
-                                                                                                        }
-                                                                                        }
-                                                                                }
+                                                        Text(
+                                                                "Start first run at:",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .bodyMedium,
+                                                                modifier =
+                                                                        Modifier.padding(top = 8.dp)
                                                         )
+                                                        Row(
+                                                                verticalAlignment =
+                                                                        Alignment.CenterVertically
+                                                        ) {
+                                                                Text(
+                                                                        text =
+                                                                                "${String.format(Locale.getDefault(), "%02d:%02d", scheduleHour, scheduleMinute)}",
+                                                                        style =
+                                                                                MaterialTheme
+                                                                                        .typography
+                                                                                        .bodyLarge
+                                                                )
+                                                                Spacer(
+                                                                        modifier =
+                                                                                Modifier.width(
+                                                                                        16.dp
+                                                                                )
+                                                                )
+                                                                Button(
+                                                                        onClick = {
+                                                                                timePickerDialog
+                                                                                        .show()
+                                                                        }
+                                                                ) { Text("Set Start Time") }
+                                                        }
                                                 }
 
                                                 Spacer(modifier = Modifier.height(16.dp))

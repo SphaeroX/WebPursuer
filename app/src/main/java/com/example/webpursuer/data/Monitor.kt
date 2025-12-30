@@ -16,8 +16,11 @@ data class Monitor(
     val llmPrompt: String? = null,
     val llmEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
-    val scheduleType: String = "INTERVAL", // INTERVAL or DAILY
-    val checkTime: String? = null, // HH:mm for DAILY
+    val scheduleType: String = "INTERVAL", // INTERVAL, DAILY (legacy), SPECIFIC_TIME
+    val checkTime: String? = null, // HH:mm for DAILY (legacy)
+    @androidx.room.ColumnInfo(defaultValue = "0") val scheduleHour: Int = 0,
+    @androidx.room.ColumnInfo(defaultValue = "0") val scheduleMinute: Int = 0,
+    @androidx.room.ColumnInfo(defaultValue = "127") val scheduleDays: Int = 127,
     @androidx.room.ColumnInfo(defaultValue = "0") val useAiInterpreter: Boolean = false,
     @androidx.room.ColumnInfo(defaultValue = "'Summarize the key information.'") val aiInterpreterInstruction: String = "Summarize the key information.",
     @androidx.room.ColumnInfo(defaultValue = "0") val useWebSearch: Boolean = false
