@@ -28,6 +28,12 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
                 )
     }
 
+    private val settingsRepository by lazy {
+        com.example.webpursuer.data.SettingsRepository(application)
+    }
+
+    val apiKey: kotlinx.coroutines.flow.Flow<String?> = settingsRepository.apiKey
+
     fun addReport(
             name: String,
             customPrompt: String,

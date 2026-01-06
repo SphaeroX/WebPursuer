@@ -121,6 +121,7 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     }
 
     val diffFilterMode: Flow<String> = settingsRepository.diffFilterMode
+    val apiKey: Flow<String?> = settingsRepository.apiKey
 
     fun setDiffFilterMode(mode: String) {
         viewModelScope.launch { settingsRepository.saveDiffFilterMode(mode) }

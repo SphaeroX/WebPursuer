@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -528,6 +529,12 @@ fun MonitorDetailScreen(
                                                 Spacer(modifier = Modifier.height(16.dp))
 
                                                 // AI Configuration Card
+                                                val apiKey by
+                                                        viewModel.apiKey.collectAsState(
+                                                                initial = null
+                                                        )
+                                                val isAiEnabled = !apiKey.isNullOrBlank()
+
                                                 Card(
                                                         modifier = Modifier.fillMaxWidth(),
                                                         colors =
@@ -550,6 +557,70 @@ fun MonitorDetailScreen(
                                                                                         .typography
                                                                                         .titleMedium
                                                                 )
+
+                                                                if (!isAiEnabled) {
+                                                                        Spacer(
+                                                                                modifier =
+                                                                                        Modifier.height(
+                                                                                                8.dp
+                                                                                        )
+                                                                        )
+                                                                        Card(
+                                                                                colors =
+                                                                                        CardDefaults
+                                                                                                .cardColors(
+                                                                                                        containerColor =
+                                                                                                                MaterialTheme
+                                                                                                                        .colorScheme
+                                                                                                                        .errorContainer
+                                                                                                ),
+                                                                                modifier =
+                                                                                        Modifier.fillMaxWidth()
+                                                                        ) {
+                                                                                Row(
+                                                                                        modifier =
+                                                                                                Modifier.padding(
+                                                                                                        8.dp
+                                                                                                ),
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Icon(
+                                                                                                Icons.Filled
+                                                                                                        .Info,
+                                                                                                contentDescription =
+                                                                                                        "Info",
+                                                                                                tint =
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .onErrorContainer
+                                                                                        )
+                                                                                        Spacer(
+                                                                                                modifier =
+                                                                                                        Modifier.width(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                        )
+                                                                                        Text(
+                                                                                                "OpenRouter API Key required in Settings",
+                                                                                                color =
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .onErrorContainer,
+                                                                                                style =
+                                                                                                        MaterialTheme
+                                                                                                                .typography
+                                                                                                                .bodySmall,
+                                                                                                modifier =
+                                                                                                        Modifier.weight(
+                                                                                                                1f
+                                                                                                        )
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
+
                                                                 Spacer(
                                                                         modifier =
                                                                                 Modifier.height(
@@ -570,11 +641,27 @@ fun MonitorDetailScreen(
                                                                                 modifier =
                                                                                         Modifier.weight(
                                                                                                 1f
+                                                                                        ),
+                                                                                color =
+                                                                                        if (isAiEnabled
                                                                                         )
+                                                                                                MaterialTheme
+                                                                                                        .colorScheme
+                                                                                                        .onSurface
+                                                                                        else
+                                                                                                MaterialTheme
+                                                                                                        .colorScheme
+                                                                                                        .onSurface
+                                                                                                        .copy(
+                                                                                                                alpha =
+                                                                                                                        0.38f
+                                                                                                        )
                                                                         )
                                                                         Switch(
                                                                                 checked =
                                                                                         monitor.useAiInterpreter,
+                                                                                enabled =
+                                                                                        isAiEnabled,
                                                                                 onCheckedChange = {
                                                                                         viewModel
                                                                                                 .updateMonitor(
@@ -620,7 +707,9 @@ fun MonitorDetailScreen(
                                                                                 },
                                                                                 modifier =
                                                                                         Modifier.fillMaxWidth(),
-                                                                                minLines = 2
+                                                                                minLines = 2,
+                                                                                enabled =
+                                                                                        isAiEnabled
                                                                         )
                                                                 }
 
@@ -645,11 +734,27 @@ fun MonitorDetailScreen(
                                                                                 modifier =
                                                                                         Modifier.weight(
                                                                                                 1f
+                                                                                        ),
+                                                                                color =
+                                                                                        if (isAiEnabled
                                                                                         )
+                                                                                                MaterialTheme
+                                                                                                        .colorScheme
+                                                                                                        .onSurface
+                                                                                        else
+                                                                                                MaterialTheme
+                                                                                                        .colorScheme
+                                                                                                        .onSurface
+                                                                                                        .copy(
+                                                                                                                alpha =
+                                                                                                                        0.38f
+                                                                                                        )
                                                                         )
                                                                         Switch(
                                                                                 checked =
                                                                                         monitor.llmEnabled,
+                                                                                enabled =
+                                                                                        isAiEnabled,
                                                                                 onCheckedChange = {
                                                                                         viewModel
                                                                                                 .updateMonitor(
@@ -695,7 +800,9 @@ fun MonitorDetailScreen(
                                                                                 },
                                                                                 modifier =
                                                                                         Modifier.fillMaxWidth(),
-                                                                                minLines = 2
+                                                                                minLines = 2,
+                                                                                enabled =
+                                                                                        isAiEnabled
                                                                         )
                                                                 }
 
@@ -722,7 +829,21 @@ fun MonitorDetailScreen(
                                                                                         )
                                                                         ) {
                                                                                 Text(
-                                                                                        "Enable Web Search"
+                                                                                        "Enable Web Search",
+                                                                                        color =
+                                                                                                if (isAiEnabled
+                                                                                                )
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .onSurface
+                                                                                                else
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .onSurface
+                                                                                                                .copy(
+                                                                                                                        alpha =
+                                                                                                                                0.38f
+                                                                                                                )
                                                                                 )
                                                                                 Text(
                                                                                         "Allow AI to search the web for context",
@@ -731,14 +852,26 @@ fun MonitorDetailScreen(
                                                                                                         .typography
                                                                                                         .bodySmall,
                                                                                         color =
-                                                                                                MaterialTheme
-                                                                                                        .colorScheme
-                                                                                                        .onSurfaceVariant
+                                                                                                if (isAiEnabled
+                                                                                                )
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .onSurfaceVariant
+                                                                                                else
+                                                                                                        MaterialTheme
+                                                                                                                .colorScheme
+                                                                                                                .onSurfaceVariant
+                                                                                                                .copy(
+                                                                                                                        alpha =
+                                                                                                                                0.38f
+                                                                                                                )
                                                                                 )
                                                                         }
                                                                         Switch(
                                                                                 checked =
                                                                                         monitor.useWebSearch,
+                                                                                enabled =
+                                                                                        isAiEnabled,
                                                                                 onCheckedChange = {
                                                                                         viewModel
                                                                                                 .updateMonitor(
