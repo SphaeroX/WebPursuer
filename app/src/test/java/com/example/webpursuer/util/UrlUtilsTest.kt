@@ -1,7 +1,7 @@
-package com.example.webpursuer.util
+package com.murmli.webpursuer.util
 
-import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Test
 
 class UrlUtilsTest {
     @Test

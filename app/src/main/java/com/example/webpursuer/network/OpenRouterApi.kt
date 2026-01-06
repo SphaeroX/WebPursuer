@@ -1,4 +1,4 @@
-package com.example.webpursuer.network
+package com.murmli.webpursuer.network
 
 import retrofit2.http.Body
 import retrofit2.http.POST

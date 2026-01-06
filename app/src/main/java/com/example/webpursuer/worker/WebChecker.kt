@@ -1,14 +1,14 @@
-package com.example.webpursuer.worker
+package com.murmli.webpursuer.worker
 
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.example.webpursuer.data.CheckLog
-import com.example.webpursuer.data.CheckLogDao
-import com.example.webpursuer.data.Monitor
-import com.example.webpursuer.data.MonitorDao
+import com.murmli.webpursuer.data.CheckLog
+import com.murmli.webpursuer.data.CheckLogDao
+import com.murmli.webpursuer.data.Monitor
+import com.murmli.webpursuer.data.MonitorDao
 import java.security.MessageDigest
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
@@ -20,10 +20,10 @@ class WebChecker(
         private val context: Context,
         private val monitorDao: MonitorDao,
         private val checkLogDao: CheckLogDao,
-        private val interactionDao: com.example.webpursuer.data.InteractionDao,
-        private val openRouterService: com.example.webpursuer.network.OpenRouterService,
-        private val settingsRepository: com.example.webpursuer.data.SettingsRepository,
-        private val logRepository: com.example.webpursuer.data.LogRepository
+        private val interactionDao: com.murmli.webpursuer.data.InteractionDao,
+        private val openRouterService: com.murmli.webpursuer.network.OpenRouterService,
+        private val settingsRepository: com.murmli.webpursuer.data.SettingsRepository,
+        private val logRepository: com.murmli.webpursuer.data.LogRepository
 ) {
 
     suspend fun checkMonitor(monitor: Monitor, now: Long) {
@@ -165,7 +165,7 @@ class WebChecker(
     private suspend fun loadContent(
             url: String,
             selector: String,
-            interactions: List<com.example.webpursuer.data.Interaction>
+            interactions: List<com.murmli.webpursuer.data.Interaction>
     ): String =
             withContext(Dispatchers.Main) {
                 suspendCancellableCoroutine { continuation ->
@@ -221,7 +221,7 @@ class WebChecker(
 
     private fun executeInteractions(
             webView: WebView,
-            interactions: List<com.example.webpursuer.data.Interaction>,
+            interactions: List<com.murmli.webpursuer.data.Interaction>,
             index: Int,
             onComplete: () -> Unit
     ) {
@@ -364,7 +364,7 @@ class WebChecker(
         }
 
         val intent =
-                android.content.Intent(context, com.example.webpursuer.MainActivity::class.java)
+                android.content.Intent(context, com.murmli.webpursuer.MainActivity::class.java)
                         .apply {
                             flags =
                                     android.content.Intent.FLAG_ACTIVITY_NEW_TASK or

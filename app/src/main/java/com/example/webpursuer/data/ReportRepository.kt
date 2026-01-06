@@ -1,11 +1,11 @@
-package com.example.webpursuer.data
+package com.murmli.webpursuer.data
 
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.example.webpursuer.worker.ReportWorker
+import com.murmli.webpursuer.worker.ReportWorker
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.Flow

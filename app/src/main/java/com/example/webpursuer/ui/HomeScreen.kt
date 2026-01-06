@@ -1,4 +1,4 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,14 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.webpursuer.data.Monitor
+import com.murmli.webpursuer.data.Monitor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
         monitorViewModel: MonitorViewModel = viewModel(),
         reportViewModel: ReportViewModel = viewModel(),
-        generatedReportRepository: com.example.webpursuer.data.GeneratedReportRepository,
+        generatedReportRepository: com.murmli.webpursuer.data.GeneratedReportRepository,
         initialDiffLogId: Int? = null,
         initialMonitorId: Int? = null,
         initialGeneratedReportId: Int? = null,
@@ -57,7 +57,7 @@ fun HomeScreen(
     var showLogs by remember { mutableStateOf(false) } // New state
     var showReportEdit by remember { mutableStateOf(false) }
     var selectedReportForEdit by remember {
-        mutableStateOf<com.example.webpursuer.data.Report?>(null)
+        mutableStateOf<com.murmli.webpursuer.data.Report?>(null)
     }
 
     var showReportHistory by remember { mutableStateOf<Int?>(null) } // Report ID

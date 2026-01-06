@@ -1,4 +1,4 @@
-package com.example.webpursuer.data
+package com.murmli.webpursuer.data
 
 import androidx.room.Entity
 import androidx.room.ForeignKey

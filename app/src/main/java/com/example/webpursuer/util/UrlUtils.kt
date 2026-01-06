@@ -1,4 +1,4 @@
-package com.example.webpursuer.util
+package com.murmli.webpursuer.util
 
 import java.util.regex.Pattern
 
@@ -8,7 +8,7 @@ object UrlUtils {
         val urlRegex = "(https?://\\S+)"
         val pattern = Pattern.compile(urlRegex, Pattern.CASE_INSENSITIVE)
         val matcher = pattern.matcher(text)
-        
+
         return if (matcher.find()) {
             matcher.group(1)
         } else {

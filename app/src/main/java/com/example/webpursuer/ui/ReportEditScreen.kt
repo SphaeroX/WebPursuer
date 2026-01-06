@@ -1,4 +1,4 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import android.app.TimePickerDialog
 import androidx.compose.foundation.clickable
@@ -41,7 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.webpursuer.data.Report
+import com.murmli.webpursuer.data.Report
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)

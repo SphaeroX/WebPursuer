@@ -1,4 +1,4 @@
-package com.example.webpursuer.utils
+package com.murmli.webpursuer.utils
 
 import android.content.Context
 import android.content.Intent
@@ -12,7 +12,7 @@ import android.text.TextPaint
 import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.text.HtmlCompat
-import com.example.webpursuer.data.GeneratedReport
+import com.murmli.webpursuer.data.GeneratedReport
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException

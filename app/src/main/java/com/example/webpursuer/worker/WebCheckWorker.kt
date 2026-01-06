@@ -1,10 +1,10 @@
-package com.example.webpursuer.worker
+package com.murmli.webpursuer.worker
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.webpursuer.data.AppDatabase
-import com.example.webpursuer.data.Monitor
+import com.murmli.webpursuer.data.AppDatabase
+import com.murmli.webpursuer.data.Monitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,10 +15,10 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
     private val monitorDao = database.monitorDao()
     private val checkLogDao = database.checkLogDao()
     private val interactionDao = database.interactionDao()
-    private val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
-    private val logRepository = com.example.webpursuer.data.LogRepository(database.appLogDao())
+    private val settingsRepository = com.murmli.webpursuer.data.SettingsRepository(context)
+    private val logRepository = com.murmli.webpursuer.data.LogRepository(database.appLogDao())
     private val openRouterService =
-            com.example.webpursuer.network.OpenRouterService(settingsRepository, logRepository)
+            com.murmli.webpursuer.network.OpenRouterService(settingsRepository, logRepository)
     private val webChecker =
             WebChecker(
                     context.applicationContext,
@@ -32,7 +32,7 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
 
     override suspend fun doWork(): Result =
             withContext(Dispatchers.IO) {
-                if (!com.example.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)
+                if (!com.murmli.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)
                 ) {
                     logRepository.logInfo("SYSTEM", "Skipping monitor check: No network available")
                     return@withContext Result.retry()

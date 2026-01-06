@@ -1,4 +1,4 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -49,7 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.webpursuer.data.Monitor
+import com.murmli.webpursuer.data.Monitor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

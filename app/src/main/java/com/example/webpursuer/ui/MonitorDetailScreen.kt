@@ -1,4 +1,4 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,8 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.webpursuer.data.CheckLog
-import com.example.webpursuer.data.Monitor
+import com.murmli.webpursuer.data.CheckLog
+import com.murmli.webpursuer.data.Monitor
 import java.text.SimpleDateFormat
 import java.util.*
 

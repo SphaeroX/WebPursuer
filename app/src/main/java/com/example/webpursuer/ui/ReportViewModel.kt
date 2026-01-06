@@ -1,11 +1,11 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.webpursuer.data.AppDatabase
-import com.example.webpursuer.data.Report
-import com.example.webpursuer.data.ReportRepository
+import com.murmli.webpursuer.data.AppDatabase
+import com.murmli.webpursuer.data.Report
+import com.murmli.webpursuer.data.ReportRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -29,7 +29,7 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private val settingsRepository by lazy {
-        com.example.webpursuer.data.SettingsRepository(application)
+        com.murmli.webpursuer.data.SettingsRepository(application)
     }
 
     val apiKey: kotlinx.coroutines.flow.Flow<String?> = settingsRepository.apiKey

@@ -1,4 +1,4 @@
-package com.example.webpursuer.data
+package com.murmli.webpursuer.data
 
 import android.content.Context
 import androidx.room.AutoMigration

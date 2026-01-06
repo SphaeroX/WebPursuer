@@ -1,20 +1,26 @@
-package com.example.webpursuer.data
+package com.murmli.webpursuer.data
 
 import kotlinx.coroutines.flow.Flow
 
 class LogRepository(private val appLogDao: AppLogDao) {
     val allLogs: Flow<List<AppLog>> = appLogDao.getAllLogs()
-    
+
     fun getErrorLogs(): Flow<List<AppLog>> = appLogDao.getErrorLogs()
 
-    suspend fun log(type: String, message: String, isError: Boolean = false, details: String? = null) {
-        val log = AppLog(
-            timestamp = System.currentTimeMillis(),
-            type = type,
-            message = message,
-            isError = isError,
-            details = details
-        )
+    suspend fun log(
+            type: String,
+            message: String,
+            isError: Boolean = false,
+            details: String? = null
+    ) {
+        val log =
+                AppLog(
+                        timestamp = System.currentTimeMillis(),
+                        type = type,
+                        message = message,
+                        isError = isError,
+                        details = details
+                )
         appLogDao.insert(log)
     }
 

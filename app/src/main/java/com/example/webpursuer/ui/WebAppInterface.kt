@@ -1,4 +1,4 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import android.content.Context
 import android.webkit.JavascriptInterface

@@ -1,10 +1,10 @@
-package com.example.webpursuer.worker
+package com.murmli.webpursuer.worker
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.webpursuer.data.SettingsRepository
-import com.example.webpursuer.network.OpenRouterService
+import com.murmli.webpursuer.data.SettingsRepository
+import com.murmli.webpursuer.network.OpenRouterService
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -13,16 +13,16 @@ import java.util.Locale
 class ReportWorker(context: Context, workerParams: WorkerParameters) :
         CoroutineWorker(context, workerParams) {
 
-    private val database = com.example.webpursuer.data.AppDatabase.getDatabase(context)
+    private val database = com.murmli.webpursuer.data.AppDatabase.getDatabase(context)
     private val checkLogDao = database.checkLogDao()
     private val monitorDao = database.monitorDao()
-    private val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
-    private val logRepository = com.example.webpursuer.data.LogRepository(database.appLogDao())
+    private val settingsRepository = com.murmli.webpursuer.data.SettingsRepository(context)
+    private val logRepository = com.murmli.webpursuer.data.LogRepository(database.appLogDao())
     private val openRouterService =
-            com.example.webpursuer.network.OpenRouterService(settingsRepository, logRepository)
+            com.murmli.webpursuer.network.OpenRouterService(settingsRepository, logRepository)
 
     override suspend fun doWork(): Result {
-        if (!com.example.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)) {
+        if (!com.murmli.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)) {
             logRepository.logInfo("REPORT", "Skipping report generation: No network")
             return Result.retry()
         }
@@ -195,7 +195,7 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
 
             // Save to database
             val generatedReport =
-                    com.example.webpursuer.data.GeneratedReport(
+                    com.murmli.webpursuer.data.GeneratedReport(
                             reportId = report.id,
                             timestamp = System.currentTimeMillis(),
                             content = generatedReportContent,
@@ -227,7 +227,7 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
         val intent =
                 android.content.Intent(
                                 applicationContext,
-                                com.example.webpursuer.MainActivity::class.java
+                                com.murmli.webpursuer.MainActivity::class.java
                         )
                         .apply {
                             flags =

@@ -1,4 +1,4 @@
-package com.example.webpursuer.data
+package com.murmli.webpursuer.data
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -14,9 +14,7 @@ interface GeneratedReportDao {
     @Query("SELECT * FROM generated_reports WHERE id = :id")
     suspend fun getById(id: Int): GeneratedReport?
 
-    @Insert
-    suspend fun insert(generatedReport: GeneratedReport): Long
+    @Insert suspend fun insert(generatedReport: GeneratedReport): Long
 
-    @Delete
-    suspend fun delete(generatedReport: GeneratedReport)
+    @Delete suspend fun delete(generatedReport: GeneratedReport)
 }

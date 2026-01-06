@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.webpursuer"
+    namespace = "com.murmli.webpursuer"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.webpursuer"
+        applicationId = "com.murmli.webpursuer"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

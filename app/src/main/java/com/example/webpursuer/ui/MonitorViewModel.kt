@@ -1,12 +1,12 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.webpursuer.data.AppDatabase
-import com.example.webpursuer.data.CheckLog
-import com.example.webpursuer.data.Interaction
-import com.example.webpursuer.data.Monitor
+import com.murmli.webpursuer.data.AppDatabase
+import com.murmli.webpursuer.data.CheckLog
+import com.murmli.webpursuer.data.Interaction
+import com.murmli.webpursuer.data.Monitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,7 +37,7 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         return checkLogDao.getLogsForMonitorFiltered(monitorId)
     }
 
-    fun addMonitor(monitor: Monitor, interactions: List<com.example.webpursuer.data.Interaction>) {
+    fun addMonitor(monitor: Monitor, interactions: List<com.murmli.webpursuer.data.Interaction>) {
         viewModelScope.launch {
             val insertedId = monitorDao.insertAndReturnId(monitor)
 
@@ -57,15 +57,15 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     fun checkNow(monitor: Monitor) {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
-            val settingsRepository = com.example.webpursuer.data.SettingsRepository(context)
-            val logRepository = com.example.webpursuer.data.LogRepository(database.appLogDao())
+            val settingsRepository = com.murmli.webpursuer.data.SettingsRepository(context)
+            val logRepository = com.murmli.webpursuer.data.LogRepository(database.appLogDao())
             val openRouterService =
-                    com.example.webpursuer.network.OpenRouterService(
+                    com.murmli.webpursuer.network.OpenRouterService(
                             settingsRepository,
                             logRepository
                     )
             val webChecker =
-                    com.example.webpursuer.worker.WebChecker(
+                    com.murmli.webpursuer.worker.WebChecker(
                             context,
                             monitorDao,
                             checkLogDao,
@@ -117,7 +117,7 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private val settingsRepository by lazy {
-        com.example.webpursuer.data.SettingsRepository(application)
+        com.murmli.webpursuer.data.SettingsRepository(application)
     }
 
     val diffFilterMode: Flow<String> = settingsRepository.diffFilterMode

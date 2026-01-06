@@ -1,4 +1,4 @@
-package com.example.webpursuer.ui
+package com.murmli.webpursuer.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,8 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.webpursuer.data.GeneratedReport
-import com.example.webpursuer.data.GeneratedReportRepository
+import com.murmli.webpursuer.data.GeneratedReport
+import com.murmli.webpursuer.data.GeneratedReportRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,7 +81,7 @@ fun ReportContentScreen(
                                         onClick = {
                                             showMenu = false
                                             report?.let {
-                                                com.example.webpursuer.utils.PdfExportManager
+                                                com.murmli.webpursuer.utils.PdfExportManager
                                                         .exportReportAsPdf(context, it)
                                             }
                                         }
