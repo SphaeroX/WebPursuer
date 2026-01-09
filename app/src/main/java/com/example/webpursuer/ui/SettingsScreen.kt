@@ -1,6 +1,9 @@
 package com.murmli.webpursuer.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -54,7 +57,13 @@ fun SettingsScreen(onBackClick: () -> Unit, onLogsClick: () -> Unit) {
                         )
                 }
         ) { innerPadding ->
-                Column(modifier = Modifier.padding(innerPadding).padding(16.dp).fillMaxSize()) {
+                Column(
+                        modifier =
+                                Modifier.padding(innerPadding)
+                                        .padding(16.dp)
+                                        .fillMaxSize()
+                                        .verticalScroll(rememberScrollState())
+                ) {
                         val notificationsEnabled by
                                 settingsRepository.notificationsEnabled.collectAsState(
                                         initial = true
@@ -263,6 +272,116 @@ fun SettingsScreen(onBackClick: () -> Unit, onLogsClick: () -> Unit) {
                                                 containerColor = MaterialTheme.colorScheme.secondary
                                         )
                         ) { Text("View System Logs") }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Text("Datenverwaltung", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val backupRepository = remember {
+                                com.murmli.webpursuer.data.BackupRepository(context)
+                        }
+
+                        // Export Launcher
+                        val exportLauncher =
+                                rememberLauncherForActivityResult(
+                                        androidx.activity.result.contract.ActivityResultContracts
+                                                .StartActivityForResult()
+                                ) {
+                                        // No result handling needed strictly, but good for
+                                        // validation
+                                }
+
+                        // Import Launcher
+                        val importLauncher =
+                                rememberLauncherForActivityResult(
+                                        androidx.activity.result.contract.ActivityResultContracts
+                                                .GetContent()
+                                ) { uri: android.net.Uri? ->
+                                        uri?.let {
+                                                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                        val success =
+                                                                backupRepository.importDatabase(it)
+                                                        kotlinx.coroutines.withContext(
+                                                                kotlinx.coroutines.Dispatchers.Main
+                                                        ) {
+                                                                if (success) {
+                                                                        android.widget.Toast
+                                                                                .makeText(
+                                                                                        context,
+                                                                                        "Datenbank erfolgreich wiederhergestellt. Bitte Starten Sie die App neu.",
+                                                                                        android.widget
+                                                                                                .Toast
+                                                                                                .LENGTH_LONG
+                                                                                )
+                                                                                .show()
+                                                                } else {
+                                                                        android.widget.Toast
+                                                                                .makeText(
+                                                                                        context,
+                                                                                        "Fehler beim Wiederherstellen der Datenbank.",
+                                                                                        android.widget
+                                                                                                .Toast
+                                                                                                .LENGTH_LONG
+                                                                                )
+                                                                                .show()
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+
+                        Button(
+                                onClick = {
+                                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                val uri = backupRepository.exportDatabase()
+                                                if (uri != null) {
+                                                        val shareIntent =
+                                                                android.content.Intent(
+                                                                                android.content
+                                                                                        .Intent
+                                                                                        .ACTION_SEND
+                                                                        )
+                                                                        .apply {
+                                                                                type =
+                                                                                        "application/octet-stream"
+                                                                                putExtra(
+                                                                                        android.content
+                                                                                                .Intent
+                                                                                                .EXTRA_STREAM,
+                                                                                        uri
+                                                                                )
+                                                                                addFlags(
+                                                                                        android.content
+                                                                                                .Intent
+                                                                                                .FLAG_GRANT_READ_URI_PERMISSION
+                                                                                )
+                                                                        }
+                                                        exportLauncher.launch(
+                                                                android.content.Intent
+                                                                        .createChooser(
+                                                                                shareIntent,
+                                                                                "Backup teilen"
+                                                                        )
+                                                        )
+                                                }
+                                        }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                        ) { Text("Backup erstellen (Export)") }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(
+                                onClick = { importLauncher.launch("*/*") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors =
+                                        ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.tertiary
+                                        )
+                        ) { Text("Backup wiederherstellen (Import)") }
                 }
         }
 }
