@@ -19,6 +19,7 @@ class SettingsRepository(private val context: Context) {
         val OPENROUTER_MODEL = stringPreferencesKey("openrouter_model")
         val OPENROUTER_REPORT_MODEL = stringPreferencesKey("openrouter_report_model")
         val OPENROUTER_MONITOR_MODEL = stringPreferencesKey("openrouter_monitor_model")
+        val OPENROUTER_SEARCH_MODEL = stringPreferencesKey("openrouter_search_model")
 
         val NOTIFICATIONS_ENABLED =
                 androidx.datastore.preferences.core.booleanPreferencesKey("notifications_enabled")
@@ -53,6 +54,11 @@ class SettingsRepository(private val context: Context) {
     val monitorModel: Flow<String> =
             context.dataStore.data.map { preferences ->
                 preferences[OPENROUTER_MONITOR_MODEL] ?: "google/gemini-3-flash-preview"
+            }
+
+    val searchModel: Flow<String> =
+            context.dataStore.data.map { preferences ->
+                preferences[OPENROUTER_SEARCH_MODEL] ?: "google/gemini-3-flash-preview"
             }
 
     val notificationsEnabled: Flow<Boolean> =
@@ -91,6 +97,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveMonitorModel(model: String) {
         context.dataStore.edit { preferences -> preferences[OPENROUTER_MONITOR_MODEL] = model }
+    }
+
+    suspend fun saveSearchModel(model: String) {
+        context.dataStore.edit { preferences -> preferences[OPENROUTER_SEARCH_MODEL] = model }
     }
 
     suspend fun saveNotificationsEnabled(enabled: Boolean) {

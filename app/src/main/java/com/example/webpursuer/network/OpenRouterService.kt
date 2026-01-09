@@ -283,6 +283,7 @@ class OpenRouterService(
                                         ?: "No summary available."
                         logRepository?.logInfo("LLM", "Report generated successfully.")
                         return content
+                        return content
                 } catch (e: Exception) {
                         e.printStackTrace()
                         logRepository?.logError(
@@ -291,6 +292,72 @@ class OpenRouterService(
                                 e.stackTraceToString()
                         )
                         return "Error generating report: ${e.message}"
+                }
+        }
+
+        suspend fun performSearch(prompt: String, useWebSearch: Boolean = true): String {
+                logRepository?.logInfo("LLM", "Performing search...")
+                val apiKey = settingsRepository.apiKey.first() ?: return "Error: No API Key"
+                val model = settingsRepository.searchModel.first() // Use Search Model
+
+                val client =
+                        OkHttpClient.Builder()
+                                .addInterceptor { chain ->
+                                        val request =
+                                                chain.request()
+                                                        .newBuilder()
+                                                        .addHeader(
+                                                                "Authorization",
+                                                                "Bearer $apiKey"
+                                                        )
+                                                        .addHeader(
+                                                                "HTTP-Referer",
+                                                                "https://github.com/example/webpursuer"
+                                                        )
+                                                        .addHeader("X-Title", "WebPursuerSearch")
+                                                        .build()
+                                        chain.proceed(request)
+                                }
+                                .build()
+                val retrofit =
+                        Retrofit.Builder()
+                                .baseUrl("https://openrouter.ai/")
+                                .client(client)
+                                .addConverterFactory(GsonConverterFactory.create())
+                                .build()
+                val api = retrofit.create(OpenRouterApi::class.java)
+
+                val systemPrompt =
+                        "You are a helpful assistant. Search the web if needed to answer the user's request accurately."
+
+                try {
+                        val response =
+                                api.getCompletion(
+                                        ChatRequest(
+                                                model = model,
+                                                messages =
+                                                        listOf(
+                                                                Message("system", systemPrompt),
+                                                                Message("user", prompt)
+                                                        ),
+                                                plugins =
+                                                        if (useWebSearch) listOf(Plugin("web"))
+                                                        else null
+                                        )
+                                )
+                        val content =
+                                response.choices.firstOrNull()?.message?.content
+                                        ?: "No results found."
+                        logRepository?.logInfo("LLM", "Search completed successfully.")
+                        return content
+                } catch (e: Exception) {
+                        e.printStackTrace()
+                        logRepository?.logError(
+                                "LLM",
+                                "Error performing search: ${e.message}",
+                                e.stackTraceToString()
+                        )
+                        return "Error performing search: ${e.message}"
                 }
         }
 }

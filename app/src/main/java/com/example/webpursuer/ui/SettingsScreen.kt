@@ -30,16 +30,22 @@ fun SettingsScreen(onBackClick: () -> Unit, onLogsClick: () -> Unit) {
                 settingsRepository.monitorModel.collectAsState(
                         initial = "google/gemini-3-flash-preview"
                 )
+        val searchModel by
+                settingsRepository.searchModel.collectAsState(
+                        initial = "google/gemini-3-flash-preview"
+                )
 
         var apiKeyInput by remember { mutableStateOf("") }
         var reportModelInput by remember { mutableStateOf("") }
         var monitorModelInput by remember { mutableStateOf("") }
+        var searchModelInput by remember { mutableStateOf("") }
 
         // Update inputs when data loads
-        LaunchedEffect(apiKey, reportModel, monitorModel) {
+        LaunchedEffect(apiKey, reportModel, monitorModel, searchModel) {
                 if (apiKeyInput.isEmpty()) apiKeyInput = apiKey ?: ""
                 if (reportModelInput.isEmpty()) reportModelInput = reportModel
                 if (monitorModelInput.isEmpty()) monitorModelInput = monitorModel
+                if (searchModelInput.isEmpty()) searchModelInput = searchModel
         }
 
         Scaffold(
@@ -129,6 +135,16 @@ fun SettingsScreen(onBackClick: () -> Unit, onLogsClick: () -> Unit) {
                                 singleLine = true
                         )
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                                value = searchModelInput,
+                                onValueChange = { searchModelInput = it },
+                                label = { Text("Search Model") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                        )
+
                         Spacer(modifier = Modifier.height(16.dp))
 
                         var testResult by remember { mutableStateOf<String?>(null) }
@@ -200,6 +216,7 @@ fun SettingsScreen(onBackClick: () -> Unit, onLogsClick: () -> Unit) {
                                                 settingsRepository.saveMonitorModel(
                                                         monitorModelInput
                                                 )
+                                                settingsRepository.saveSearchModel(searchModelInput)
                                                 onBackClick()
                                         }
                                 },
