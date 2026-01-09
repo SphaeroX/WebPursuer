@@ -262,7 +262,10 @@ fun HomeScreen(
                                 selectedSearchForEdit = search
                                 showSearchEdit = true
                             },
-                            onHistoryClick = { /* TODO: Implement Search History */},
+                            onHistoryClick = { search ->
+                                showSearchHistoryId = search.id
+                                searchHistoryTitle = search.title.ifBlank { search.prompt }
+                            },
                             innerPadding = innerPadding
                     )
                 }
