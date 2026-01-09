@@ -3,6 +3,8 @@ package com.murmli.webpursuer.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -24,6 +26,40 @@ fun SearchHistoryScreen(
         onBackClick: () -> Unit
 ) {
     val logs by viewModel.getLogsForSearch(searchId).collectAsState(initial = emptyList())
+    var selectedLog by remember { mutableStateOf<SearchLog?>(null) }
+
+    if (selectedLog != null) {
+        val log = selectedLog!!
+        AlertDialog(
+                onDismissRequest = { selectedLog = null },
+                title = {
+                    Text(
+                            text =
+                                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                            .format(Date(log.timestamp))
+                    )
+                },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        if (log.aiConditionMet != null) {
+                            Text(
+                                    text =
+                                            if (log.aiConditionMet) "AI Condition: MET"
+                                            else "AI Condition: NOT MET",
+                                    color =
+                                            if (log.aiConditionMet)
+                                                    MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                        Text(text = log.resultText)
+                    }
+                },
+                confirmButton = { TextButton(onClick = { selectedLog = null }) { Text("Close") } }
+        )
+    }
 
     Scaffold(
             topBar = {
@@ -52,14 +88,14 @@ fun SearchHistoryScreen(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) { items(logs) { log -> SearchLogItem(log) } }
+            ) { items(logs) { log -> SearchLogItem(log, onClick = { selectedLog = log }) } }
         }
     }
 }
 
 @Composable
-fun SearchLogItem(log: SearchLog) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun SearchLogItem(log: SearchLog, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                     modifier = Modifier.fillMaxWidth(),
