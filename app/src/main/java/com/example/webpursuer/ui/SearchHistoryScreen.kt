@@ -1,12 +1,12 @@
 package com.murmli.webpursuer.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,22 +26,45 @@ fun SearchHistoryScreen(
         onBackClick: () -> Unit
 ) {
     val logs by viewModel.getLogsForSearch(searchId).collectAsState(initial = emptyList())
+    // Make sure we import SearchLog correctly or use fully qualified if needed, assuming data
+    // package is correct
     var selectedLog by remember { mutableStateOf<SearchLog?>(null) }
 
     if (selectedLog != null) {
         val log = selectedLog!!
-        AlertDialog(
-                onDismissRequest = { selectedLog = null },
-                title = {
-                    Text(
-                            text =
-                                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                                            .format(Date(log.timestamp))
+        BackHandler { selectedLog = null }
+
+        Scaffold(
+                topBar = {
+                    TopAppBar(
+                            title = {
+                                Text(
+                                        text =
+                                                SimpleDateFormat(
+                                                                "yyyy-MM-dd HH:mm:ss",
+                                                                Locale.getDefault()
+                                                        )
+                                                        .format(Date(log.timestamp))
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { selectedLog = null }) {
+                                    Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = "Back"
+                                    )
+                                }
+                            }
                     )
-                },
-                text = {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        if (log.aiConditionMet != null) {
+                }
+        ) { innerPadding ->
+            SelectionContainer {
+                LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentPadding = PaddingValues(16.dp)
+                ) {
+                    if (log.aiConditionMet != null) {
+                        item {
                             Text(
                                     text =
                                             if (log.aiConditionMet) "AI Condition: MET"
@@ -54,41 +77,46 @@ fun SearchHistoryScreen(
                                     modifier = Modifier.padding(bottom = 8.dp)
                             )
                         }
-                        Text(text = log.resultText)
                     }
-                },
-                confirmButton = { TextButton(onClick = { selectedLog = null }) { Text("Close") } }
-        )
-    }
-
-    Scaffold(
-            topBar = {
-                TopAppBar(
-                        title = { Text(searchTitle.ifBlank { "Search History" }) },
-                        navigationIcon = {
-                            IconButton(onClick = onBackClick) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                            }
-                        },
-                        actions = {
-                            IconButton(onClick = { viewModel.runSearchNow(searchId) }) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Run Now")
-                            }
-                        }
-                )
+                    item {
+                        MarkdownText(markdown = log.resultText, modifier = Modifier.fillMaxSize())
+                    }
+                }
             }
-    ) { innerPadding ->
-        if (logs.isEmpty()) {
-            Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center
-            ) { Text("No history yet.") }
-        } else {
-            LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) { items(logs) { log -> SearchLogItem(log, onClick = { selectedLog = log }) } }
+        }
+    } else {
+        Scaffold(
+                topBar = {
+                    TopAppBar(
+                            title = { Text(searchTitle.ifBlank { "Search History" }) },
+                            navigationIcon = {
+                                IconButton(onClick = onBackClick) {
+                                    Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = "Back"
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { viewModel.runSearchNow(searchId) }) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = "Run Now")
+                                }
+                            }
+                    )
+                }
+        ) { innerPadding ->
+            if (logs.isEmpty()) {
+                Box(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                ) { Text("No history yet.") }
+            } else {
+                LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) { items(logs) { log -> SearchLogItem(log, onClick = { selectedLog = log }) } }
+            }
         }
     }
 }
