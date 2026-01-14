@@ -16,13 +16,17 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
+fun MarkdownText(
+        markdown: String,
+        modifier: Modifier = Modifier,
+        color: Color = Color.Unspecified
+) {
     val styledText = remember(markdown) { parseMarkdown(markdown) }
     Text(
             text = styledText,
             modifier = modifier,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = color
     )
 }
 

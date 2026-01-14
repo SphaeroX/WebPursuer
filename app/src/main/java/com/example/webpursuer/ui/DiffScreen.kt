@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -87,6 +88,10 @@ fun DiffScreen(
     var showFilterMenu by remember { mutableStateOf(false) }
     var showVersionSelectionDialog by remember { mutableStateOf(false) }
     var showRaw by remember { mutableStateOf(false) }
+
+    // Default to Rendered view if AI Interpreter is used, otherwise False.
+    // We use a derived state based on monitor loaded, but can also just state:
+    var showRendered by remember(monitor) { mutableStateOf(monitor?.useAiInterpreter == true) }
 
     // Helper to change version
     fun goToNewer() {
@@ -169,6 +174,19 @@ fun DiffScreen(
                             }
                         },
                         actions = {
+                            // Toggle Rendered/Diff view if AI is enabled
+                            if (monitor?.useAiInterpreter == true) {
+                                IconButton(onClick = { showRendered = !showRendered }) {
+                                    Text(
+                                            text = if (showRendered) "Show Diff" else "Show MD",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight =
+                                                    androidx.compose.ui.text.font.FontWeight.Bold
+                                    )
+                                }
+                            }
+
                             IconButton(onClick = { showFilterMenu = true }) {
                                 Icon(
                                         Icons.Default.List,
@@ -257,11 +275,10 @@ fun DiffScreen(
                             detectHorizontalDragGestures(
                                     onDragEnd = {
                                         if (swipeOffsetX > 100) {
-                                            // Swipe Right -> Go to Older (Previous in time, higher
-                                            // index)
+                                            // Swipe Right -> Go to Older
                                             goToOlder()
                                         } else if (swipeOffsetX < -100) {
-                                            // Swipe Left -> Go to Newer (Next in time, lower index)
+                                            // Swipe Left -> Go to Newer
                                             goToNewer()
                                         }
                                         swipeOffsetX = 0f
@@ -322,69 +339,119 @@ fun DiffScreen(
                     ) { Text("Neuer >") }
                 }
 
-                // Compare Info
-                Row(
-                        modifier =
-                                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement =
-                                androidx.compose.foundation.layout.Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Vergleich mit:", color = Color.Gray, fontSize = 12.sp)
-                        previousLog?.let {
+                if (!showRendered) {
+                    // Standard Diff View Header
+                    // Compare Info
+                    Row(
+                            modifier =
+                                    Modifier.fillMaxWidth()
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement =
+                                    androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Vergleich mit:", color = Color.Gray, fontSize = 12.sp)
+                            previousLog?.let {
+                                Text(
+                                        SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault())
+                                                .format(Date(it.timestamp)),
+                                        color = Color(0xFFE57373),
+                                        fontSize = 12.sp
+                                )
+                            }
+                                    ?: Text(
+                                            "Nichts (Initial)",
+                                            color = Color.Gray,
+                                            fontSize = 12.sp
+                                    )
+                        }
+                    }
+
+                    val hasRawContent = currentLog.rawContent != null
+                    if (hasRawContent) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                    SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault())
-                                            .format(Date(it.timestamp)),
-                                    color = Color(0xFFE57373),
-                                    fontSize = 12.sp
+                                    "Show Raw Content",
+                                    color = Color.White,
+                                    modifier = Modifier.weight(1f)
+                            )
+                            androidx.compose.material3.Switch(
+                                    checked = showRaw,
+                                    onCheckedChange = { showRaw = it }
                             )
                         }
-                                ?: Text("Nichts (Initial)", color = Color.Gray, fontSize = 12.sp)
                     }
                 }
 
-                val hasRawContent = currentLog.rawContent != null
-                if (hasRawContent) {
-                    Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                                "Show Raw Content",
-                                color = Color.White,
-                                modifier = Modifier.weight(1f)
-                        )
-                        androidx.compose.material3.Switch(
-                                checked = showRaw,
-                                onCheckedChange = { showRaw = it }
-                        )
-                    }
-                }
-
-                // Diff Content
                 val oldText =
                         if (showRaw) (previousLog?.rawContent ?: previousLog?.content ?: "")
                         else (previousLog?.content ?: "")
                 val newText =
                         if (showRaw) (currentLog.rawContent ?: "") else (currentLog.content ?: "")
-                val allDiffLines = GenerateDiff(oldText, newText)
 
-                val filteredLines =
-                        when (diffFilterMode) {
-                            "NEW" -> allDiffLines.filter { it.color == Color(0xFF69F0AE) }
-                            "REMOVED" -> allDiffLines.filter { it.color == Color(0xFFFF5252) }
-                            "UNCHANGED" -> allDiffLines.filter { it.color == Color.White }
-                            else -> allDiffLines
+                if (showRendered) {
+                    // Markdown Rendered View
+                    // Use SelectionContainer to allow copying text
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        // Wrap in LazyColumn for scrolling
+                        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                            item {
+                                // We utilize the existing MarkdownText composable
+                                // Need to ensure color is visible against black background.
+                                // MarkdownText likely uses onSurface which might be black on light
+                                // theme,
+                                // but here container is Black.
+                                // Let's wrap in a Surface to ensure theme colors are consistent if
+                                // needed,
+                                // or force content color.
+                                // Since DiffScreen enforces dark mode (Black container),
+                                // we should check if MarkdownText is adaptive.
+                                // MarkdownText uses MaterialTheme.colorScheme.onSurface.
+                                // If we want it to look good on black, we should provide a dark
+                                // surface or override styles.
+                                // Easiest is to wrap this part in a surface of dark color (or reuse
+                                // scaffold background)
+                                // and ensure theme is dark or just put it in a box with white text.
+                                // But MarkdownText internally sets color.
+                                // Let's assume MaterialTheme handles it or we override
+                                // contentColor.
+
+                                // Override LocalContentColor to White for this section if needed,
+                                // but MarkdownText sets its own color.
+                                // Let's rely on standard Theme.
+                                Surface(color = Color.Black, contentColor = Color.White) {
+                                    MarkdownText(
+                                            markdown = newText,
+                                            modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
                         }
+                    }
+                } else {
+                    // Diff View
+                    val allDiffLines = GenerateDiff(oldText, newText)
 
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-                    items(filteredLines) { line ->
-                        Text(
-                                text = line.text,
-                                color = line.color,
-                                textDecoration = line.decoration,
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                    val filteredLines =
+                            when (diffFilterMode) {
+                                "NEW" -> allDiffLines.filter { it.color == Color(0xFF69F0AE) }
+                                "REMOVED" -> allDiffLines.filter { it.color == Color(0xFFFF5252) }
+                                "UNCHANGED" -> allDiffLines.filter { it.color == Color.White }
+                                else -> allDiffLines
+                            }
+
+                    LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                        items(filteredLines) { line ->
+                            Text(
+                                    text = line.text,
+                                    color = line.color,
+                                    textDecoration = line.decoration,
+                                    modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
