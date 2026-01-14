@@ -74,6 +74,9 @@ fun DiffScreen(
     // Initialize with -1 until logs are loaded
     var currentIndex by remember { mutableIntStateOf(-1) }
 
+    val currentLog = if (currentIndex in logs.indices) logs[currentIndex] else null
+    val previousLog = if (currentIndex + 1 in logs.indices) logs[currentIndex + 1] else null
+
     // Initialize currentIndex based on checkLogId when logs are first loaded
     LaunchedEffect(logs, checkLogId) {
         if (logs.isNotEmpty() && currentIndex == -1) {
@@ -89,9 +92,14 @@ fun DiffScreen(
     var showVersionSelectionDialog by remember { mutableStateOf(false) }
     var showRaw by remember { mutableStateOf(false) }
 
-    // Default to Rendered view if AI Interpreter is used, otherwise False.
-    // We use a derived state based on monitor loaded, but can also just state:
-    var showRendered by remember(monitor) { mutableStateOf(monitor?.useAiInterpreter == true) }
+    // Default to Rendered view if AI Interpreter is used OR content looks like Markdown
+    // We use a derived state based on monitor loaded.
+    var showRendered by
+            remember(monitor, currentLog) {
+                mutableStateOf(
+                        monitor?.useAiInterpreter == true || isLikelyMarkdown(currentLog?.content)
+                )
+            }
 
     // Helper to change version
     fun goToNewer() {
@@ -101,9 +109,6 @@ fun DiffScreen(
     fun goToOlder() {
         if (currentIndex < logs.size - 1) currentIndex++
     }
-
-    val currentLog = if (currentIndex in logs.indices) logs[currentIndex] else null
-    val previousLog = if (currentIndex + 1 in logs.indices) logs[currentIndex + 1] else null
 
     // Swipe detection state
     var swipeOffsetX by remember { mutableStateOf(0f) }
@@ -174,17 +179,14 @@ fun DiffScreen(
                             }
                         },
                         actions = {
-                            // Toggle Rendered/Diff view if AI is enabled
-                            if (monitor?.useAiInterpreter == true) {
-                                IconButton(onClick = { showRendered = !showRendered }) {
-                                    Text(
-                                            text = if (showRendered) "Show Diff" else "Show MD",
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight =
-                                                    androidx.compose.ui.text.font.FontWeight.Bold
-                                    )
-                                }
+                            // Toggle Rendered/Diff view - ALWAYS available now
+                            IconButton(onClick = { showRendered = !showRendered }) {
+                                Text(
+                                        text = if (showRendered) "Show Diff" else "Show MD",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
                             }
 
                             IconButton(onClick = { showFilterMenu = true }) {
@@ -519,4 +521,25 @@ fun GenerateDiff(oldText: String, newText: String): List<DiffLine> {
     }
 
     return tempResult.reversed()
+}
+
+fun isLikelyMarkdown(text: String?): Boolean {
+    if (text.isNullOrBlank()) return false
+    // Simple heuristics for Markdown
+    val markdownIndicators =
+            listOf(
+                    "## ",
+                    "### ",
+                    "#### ", // Headers
+                    "**",
+                    "__", // Bold
+                    "* ",
+                    "- ", // Lists
+                    "[",
+                    "](", // Links
+                    "```",
+                    "`" // Code
+            )
+    // Check if any indicator is present
+    return markdownIndicators.any { text.contains(it) }
 }
