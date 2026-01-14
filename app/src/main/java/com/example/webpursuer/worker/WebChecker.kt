@@ -353,12 +353,24 @@ class WebChecker(
         webView.evaluateJavascript(js) { result ->
             val text =
                     if (result != null && result != "null") {
-                        if (result.startsWith("\"") && result.endsWith("\"")) {
-                            result.substring(1, result.length - 1)
-                                    .replace("\\n", "\n")
-                                    .replace("\\\"", "\"")
-                                    .replace("\\\\", "\\")
-                        } else {
+                        try {
+                            if (result.startsWith("\"") && result.endsWith("\"")) {
+                                // Manual unescape to avoid build issues
+                                var unescaped = result.substring(1, result.length - 1)
+                                unescaped = unescaped.replace("\\\"", "\"").replace("\\\\", "\\")
+
+                                // Decode Unicode escape sequences
+                                val regex = Regex("\\\\u([0-9a-fA-F]{4})")
+                                unescaped =
+                                        regex.replace(unescaped) {
+                                            it.groupValues[1].toInt(16).toChar().toString()
+                                        }
+                                unescaped.replace("\\n", "\n")
+                            } else {
+                                result
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("WebChecker", "Unescape failed", e)
                             result
                         }
                     } else {
