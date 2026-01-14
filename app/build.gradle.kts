@@ -6,13 +6,13 @@ plugins {
 
 android {
     namespace = "com.murmli.webpursuer"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.murmli.webpursuer"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
+        targetSdk = 35
+        versionCode = 101
         versionName = "1.0"
 
         javaCompileOptions {
