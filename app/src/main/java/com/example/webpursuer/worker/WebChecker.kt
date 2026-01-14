@@ -9,12 +9,15 @@ import com.murmli.webpursuer.data.CheckLog
 import com.murmli.webpursuer.data.CheckLogDao
 import com.murmli.webpursuer.data.Monitor
 import com.murmli.webpursuer.data.MonitorDao
+import java.io.StringReader
 import java.security.MessageDigest
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.xmlpull.v1.XmlPullParser
+import org.xmlpull.v1.XmlPullParserFactory
 
 class WebChecker(
         private val context: Context,
@@ -63,6 +66,26 @@ class WebChecker(
             }
 
             var rawContent: String? = null
+
+            // RSS Handling
+            if (isRssFeed(content)) {
+                try {
+                    logRepository.logInfo(
+                            "MONITOR",
+                            "RSS Feed detected for ${monitor.name}, parsing content..."
+                    )
+                    val parsed = parseRss(content)
+                    if (parsed.isNotBlank()) {
+                        rawContent = content // Save original XML as rawContent
+                        content = parsed
+                    }
+                } catch (e: Exception) {
+                    logRepository.logError(
+                            "MONITOR",
+                            "Failed to parse RSS for ${monitor.name}: ${e.message}"
+                    )
+                }
+            }
             if (monitor.useAiInterpreter) {
                 rawContent = content
                 logRepository.logInfo(
@@ -264,6 +287,12 @@ class WebChecker(
         val js =
                 """
             (function() {
+                // Check if content is XML/RSS
+                var contentType = document.contentType;
+                if (contentType && (contentType.includes('xml') || contentType.includes('rss'))) {
+                    return document.documentElement.outerHTML;
+                }
+
                 var element = document.querySelector('$selector');
                 if (!element) return '';
                 
@@ -342,6 +371,103 @@ class WebChecker(
     private fun hash(input: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun isRssFeed(content: String): Boolean {
+        val trimmed = content.trimStart()
+        return trimmed.startsWith("<?xml") ||
+                trimmed.startsWith("<rss") ||
+                trimmed.startsWith("<feed")
+    }
+
+    private fun parseRss(xml: String): String {
+        try {
+            val factory = XmlPullParserFactory.newInstance()
+            factory.isNamespaceAware = false
+            val xpp = factory.newPullParser()
+            xpp.setInput(StringReader(xml))
+
+            val sb = StringBuilder()
+            var eventType = xpp.eventType
+            var insideItem = false
+            var title = ""
+            var link = ""
+            var description = ""
+
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                val name = xpp.name
+                when (eventType) {
+                    XmlPullParser.START_TAG -> {
+                        if (name.equals("item", ignoreCase = true) ||
+                                        name.equals("entry", ignoreCase = true)
+                        ) {
+                            insideItem = true
+                            title = ""
+                            link = ""
+                            description = ""
+                        } else if (insideItem) {
+                            if (name != null) {
+                                when {
+                                    name.equals("title", ignoreCase = true) ->
+                                            title = safeNextText(xpp)
+                                    name.equals("link", ignoreCase = true) -> {
+                                        val href = xpp.getAttributeValue(null, "href")
+                                        if (!href.isNullOrBlank()) {
+                                            link = href
+                                        } else {
+                                            val text = safeNextText(xpp)
+                                            if (text.isNotBlank()) link = text
+                                        }
+                                    }
+                                    name.equals("description", ignoreCase = true) ||
+                                            name.equals("summary", ignoreCase = true) -> {
+                                        description = safeNextText(xpp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    XmlPullParser.END_TAG -> {
+                        if (name.equals("item", ignoreCase = true) ||
+                                        name.equals("entry", ignoreCase = true)
+                        ) {
+                            insideItem = false
+                            sb.append("## $title\n")
+                            if (link.isNotBlank()) sb.append("Link: $link\n")
+                            if (description.isNotBlank()) {
+                                val cleanDesc = cleanHtml(description)
+                                if (cleanDesc.isNotBlank()) sb.append("Summary: $cleanDesc\n")
+                            }
+                            sb.append("---\n")
+                        }
+                    }
+                }
+                eventType = xpp.next()
+            }
+            return sb.toString()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return ""
+        }
+    }
+
+    private fun safeNextText(xpp: XmlPullParser): String {
+        return try {
+            if (xpp.next() == XmlPullParser.TEXT) {
+                xpp.text?.trim() ?: ""
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    private fun cleanHtml(html: String): String {
+        return android.text.Html.fromHtml(html, android.text.Html.FROM_HTML_MODE_COMPACT)
+                .toString()
+                .trim()
+                .replace(Regex("\\n\\s*\\n"), "\n")
     }
 
     private suspend fun sendNotification(
