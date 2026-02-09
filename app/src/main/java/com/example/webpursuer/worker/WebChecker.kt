@@ -354,21 +354,28 @@ class WebChecker(
             val text =
                     if (result != null && result != "null") {
                         try {
-                            if (result.startsWith("\"") && result.endsWith("\"")) {
-                                // Manual unescape to avoid build issues
-                                var unescaped = result.substring(1, result.length - 1)
-                                unescaped = unescaped.replace("\\\"", "\"").replace("\\\\", "\\")
-
-                                // Decode Unicode escape sequences
-                                val regex = Regex("\\\\u([0-9a-fA-F]{4})")
-                                unescaped =
-                                        regex.replace(unescaped) {
-                                            it.groupValues[1].toInt(16).toChar().toString()
-                                        }
-                                unescaped.replace("\\n", "\n")
-                            } else {
-                                result
+                            var unescaped = result
+                            
+                            // Remove surrounding quotes if present
+                            if (unescaped.startsWith("\"") && unescaped.endsWith("\"")) {
+                                unescaped = unescaped.substring(1, unescaped.length - 1)
                             }
+                            
+                            // Unescape JSON special characters
+                            unescaped = unescaped
+                                .replace("\\\"", "\"")
+                                .replace("\\\\", "\\")
+                                .replace("\\n", "\n")
+                                .replace("\\r", "\r")
+                                .replace("\\t", "\t")
+                            
+                            // Decode Unicode escape sequences (\uXXXX)
+                            val unicodeRegex = Regex("\\\\u([0-9a-fA-F]{4})")
+                            unescaped = unicodeRegex.replace(unescaped) {
+                                it.groupValues[1].toInt(16).toChar().toString()
+                            }
+                            
+                            unescaped
                         } catch (e: Exception) {
                             android.util.Log.e("WebChecker", "Unescape failed", e)
                             result
@@ -444,7 +451,9 @@ class WebChecker(
                                         name.equals("entry", ignoreCase = true)
                         ) {
                             insideItem = false
-                            sb.append("## $title\n")
+                            // Decode HTML entities in title
+                            val decodedTitle = decodeHtmlEntities(title)
+                            sb.append("## $decodedTitle\n")
                             if (link.isNotBlank()) sb.append("Link: $link\n")
                             if (description.isNotBlank()) {
                                 val cleanDesc = cleanHtml(description)
@@ -480,6 +489,30 @@ class WebChecker(
                 .toString()
                 .trim()
                 .replace(Regex("\\n\\s*\\n"), "\n")
+    }
+
+    private fun decodeHtmlEntities(text: String): String {
+        return text
+            .replace("&quot;", "\"")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&#39;", "'")
+            .replace("&apos;", "'")
+            .replace("&nbsp;", " ")
+            .replace("&ndash;", "–")
+            .replace("&mdash;", "—")
+            .replace("&lsquo;", "'")
+            .replace("&rsquo;", "'")
+            .replace("&ldquo;", "\"")
+            .replace("&rdquo;", "\"")
+            .replace("&hellip;", "…")
+            .replace("&euro;", "€")
+            .replace("&pound;", "£")
+            .replace("&yen;", "¥")
+            .replace("&copy;", "©")
+            .replace("&reg;", "®")
+            .replace("&trade;", "™")
     }
 
     private suspend fun sendNotification(
