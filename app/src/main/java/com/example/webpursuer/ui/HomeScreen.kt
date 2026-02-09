@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -99,6 +100,36 @@ fun HomeScreen(
 
     // FAB Dialog State
     var showAddDialog by remember { mutableStateOf(false) }
+
+    // Helper function to check if we're on a sub-screen
+    fun isOnSubScreen(): Boolean {
+        return diffLogId != null && diffMonitorId != null ||
+                showLogs ||
+                showSettings ||
+                showReportContent != null ||
+                showReportHistory != null ||
+                showReportEdit ||
+                showSearchEdit ||
+                showSearchHistoryId != null ||
+                selectedMonitor != null
+    }
+
+    // Handle back button - always return to main screen
+    BackHandler(enabled = isOnSubScreen()) {
+        // Reset all navigation states to return to main screen
+        diffLogId = null
+        diffMonitorId = null
+        showLogs = false
+        showSettings = false
+        showReportContent = null
+        showReportHistory = null
+        showReportEdit = false
+        selectedReportForEdit = null
+        showSearchEdit = false
+        selectedSearchForEdit = null
+        showSearchHistoryId = null
+        selectedMonitorId = null
+    }
 
     if (diffLogId != null && diffMonitorId != null) {
         DiffScreen(
