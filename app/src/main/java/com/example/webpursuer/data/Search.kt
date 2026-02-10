@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "searches")
 data class Search(
         @PrimaryKey(autoGenerate = true) val id: Int = 0,
-        val title: String,
+        @androidx.room.ColumnInfo(defaultValue = "''") val title: String = "",
         val prompt: String,
         val scheduleType: String = "INTERVAL", // INTERVAL, SPECIFIC_TIME
         val intervalMinutes: Long = 60,

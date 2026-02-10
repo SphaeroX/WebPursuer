@@ -1,6 +1,7 @@
 package com.murmli.webpursuer.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,8 +13,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -24,9 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -258,6 +265,18 @@ fun HomeScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                         ) { Text("No monitors yet. Add one!") }
                     } else {
+                        // Load change percentages for all monitors
+                        val changePercentages = remember(monitors) {
+                            mutableStateMapOf<Int, Double?>()
+                        }
+                        
+                        LaunchedEffect(monitors) {
+                            monitors.forEach { monitor ->
+                                val lastLog = monitorViewModel.getLastChangedLog(monitor.id)
+                                changePercentages[monitor.id] = lastLog?.changePercentage
+                            }
+                        }
+                        
                         LazyColumn(
                                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                                 contentPadding = PaddingValues(16.dp),
@@ -266,7 +285,9 @@ fun HomeScreen(
                             items(monitors) { monitor ->
                                 MonitorItem(
                                         monitor = monitor,
+                                        lastChangePercentage = changePercentages[monitor.id],
                                         onClick = { selectedMonitorId = monitor.id },
+                                        onEditClick = { selectedMonitorId = monitor.id },
                                         onDeleteClick = { monitorViewModel.deleteMonitor(monitor) }
                                 )
                             }
@@ -347,19 +368,63 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MonitorItem(monitor: Monitor, onClick: () -> Unit, onDeleteClick: () -> Unit) {
+fun MonitorItem(
+    monitor: Monitor,
+    lastChangePercentage: Double?,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = monitor.name, style = MaterialTheme.typography.titleMedium)
                 Text(text = monitor.url, style = MaterialTheme.typography.bodyMedium)
+                if (lastChangePercentage != null) {
+                    Text(
+                        text = "Last change: ${String.format("%.1f", lastChangePercentage)}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
-            IconButton(onClick = onDeleteClick) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+            
+            // Three-dot menu
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            showMenu = false
+                            onEditClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            showMenu = false
+                            onDeleteClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                        }
+                    )
+                }
             }
         }
     }

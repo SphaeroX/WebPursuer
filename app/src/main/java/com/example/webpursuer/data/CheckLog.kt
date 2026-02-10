@@ -22,5 +22,6 @@ data class CheckLog(
         val result: String, // "SUCCESS", "FAILURE", "CHANGED", "UNCHANGED"
         val message: String,
         val content: String? = null,
-        val rawContent: String? = null
+        val rawContent: String? = null,
+        val changePercentage: Double? = null // Percentage of change (0.0 - 100.0), null if no change or initial check
 )

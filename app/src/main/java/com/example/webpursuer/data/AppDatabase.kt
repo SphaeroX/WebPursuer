@@ -17,15 +17,8 @@ import androidx.room.RoomDatabase
                         AppLog::class,
                         Search::class,
                         SearchLog::class],
-        version = 14,
-        exportSchema = true,
-        autoMigrations =
-                [
-                        AutoMigration(from = 8, to = 9),
-                        AutoMigration(from = 9, to = 10),
-                        AutoMigration(from = 10, to = 11),
-                        AutoMigration(from = 11, to = 12),
-                        AutoMigration(from = 12, to = 13)]
+        version = 15,
+        exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
         abstract fun monitorDao(): MonitorDao

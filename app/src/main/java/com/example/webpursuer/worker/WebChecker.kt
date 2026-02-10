@@ -106,6 +106,7 @@ class WebChecker(
             var message: String
             val newHash: String?
             var shouldNotify = false
+            var changePercentage: Double? = null
 
             // Standard Change Detection
             if (monitor.lastContentHash == null) {
@@ -117,6 +118,35 @@ class WebChecker(
                 message = "Content changed!"
                 newHash = contentHash
                 shouldNotify = true
+
+                // Calculate change percentage
+                val previousLog = checkLogDao.getPreviousLog(monitor.id, now)
+                val previousContent = previousLog?.content
+                changePercentage = if (previousContent != null) {
+                    calculateChangePercentage(previousContent, content)
+                } else {
+                    100.0 // If no previous content, assume 100% change
+                }
+
+                // Check threshold
+                if (monitor.thresholdValue > 0) {
+                    val thresholdMet = when (monitor.thresholdType) {
+                        "PERCENTAGE" -> changePercentage >= monitor.thresholdValue
+                        "CHARACTER_COUNT" -> {
+                            val charDiff = kotlin.math.abs(content.length - (previousContent?.length ?: 0))
+                            charDiff >= monitor.thresholdValue.toInt()
+                        }
+                        else -> true
+                    }
+                    if (!thresholdMet) {
+                        shouldNotify = false
+                        message += " (below threshold ${monitor.thresholdValue}${if (monitor.thresholdType == "PERCENTAGE") "%" else " chars"})"
+                    } else {
+                        message += " (${String.format("%.1f", changePercentage)}% change)"
+                    }
+                } else {
+                    message += " (${String.format("%.1f", changePercentage)}% change)"
+                }
 
                 if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
                     val llmResult =
@@ -131,8 +161,6 @@ class WebChecker(
                         message += " LLM Condition NOT Met."
                         shouldNotify = false // Don't notify if LLM condition fails
                     }
-                } else {
-                    message += " Content changed for ${monitor.name}"
                 }
             } else {
                 result = "UNCHANGED"
@@ -152,7 +180,8 @@ class WebChecker(
                                     result = result,
                                     message = message,
                                     content = content,
-                                    rawContent = rawContent
+                                    rawContent = rawContent,
+                                    changePercentage = changePercentage
                             )
                     )
 
@@ -163,7 +192,7 @@ class WebChecker(
 
             // Send Notification if needed
             if (result == "CHANGED" && shouldNotify) {
-                sendNotification(monitor.id, logId.toInt(), "Monitor Update", message)
+                sendNotification(monitor.id, logId.toInt(), "Monitor Update", message, changePercentage)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -392,6 +421,45 @@ class WebChecker(
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
+    private fun calculateChangePercentage(oldContent: String, newContent: String): Double {
+        val oldLength = oldContent.length
+        val newLength = newContent.length
+
+        if (oldLength == 0 && newLength == 0) return 0.0
+        if (oldLength == 0) return 100.0
+
+        // Calculate Levenshtein distance
+        val distance = levenshteinDistance(oldContent, newContent)
+        val maxLength = kotlin.math.max(oldLength, newLength)
+
+        return (distance.toDouble() / maxLength) * 100.0
+    }
+
+    private fun levenshteinDistance(s1: String, s2: String): Int {
+        val m = s1.length
+        val n = s2.length
+
+        if (m == 0) return n
+        if (n == 0) return m
+
+        val dp = Array(m + 1) { IntArray(n + 1) }
+
+        for (i in 0..m) dp[i][0] = i
+        for (j in 0..n) dp[0][j] = j
+
+        for (i in 1..m) {
+            for (j in 1..n) {
+                val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
+                dp[i][j] = kotlin.math.min(
+                    kotlin.math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
+                    dp[i - 1][j - 1] + cost
+                )
+            }
+        }
+
+        return dp[m][n]
+    }
+
     private fun isRssFeed(content: String): Boolean {
         val trimmed = content.trimStart()
         return trimmed.startsWith("<?xml") ||
@@ -519,7 +587,8 @@ class WebChecker(
             monitorId: Int,
             logId: Int,
             title: String,
-            message: String
+            message: String,
+            changePercentage: Double? = null
     ) {
         // Check if notifications are enabled globally
         val isGloballyEnabled = settingsRepository.notificationsEnabled.first()
@@ -527,7 +596,6 @@ class WebChecker(
             return
         }
 
-        // Check if notifications are enabled for this monitor
         // Check if notifications are enabled for this monitor
         val monitor = monitorDao.getById(monitorId)
         if (monitor == null || !monitor.notificationsEnabled) {
@@ -552,11 +620,17 @@ class WebChecker(
                                 android.app.PendingIntent.FLAG_UPDATE_CURRENT
                 )
 
+        val notificationText = if (changePercentage != null) {
+            "Content changed for ${monitor.name} (${String.format("%.1f", changePercentage)}%)"
+        } else {
+            "Content changed for ${monitor.name}"
+        }
+
         val builder =
                 androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
                         .setSmallIcon(android.R.drawable.ic_dialog_info)
                         .setContentTitle("Changes found")
-                        .setContentText("Content changed for ${monitor.name}")
+                        .setContentText(notificationText)
                         .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
                         .setContentIntent(pendingIntent)
                         .setAutoCancel(true)

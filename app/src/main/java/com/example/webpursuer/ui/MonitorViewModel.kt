@@ -94,6 +94,10 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         return checkLogDao.getPreviousLog(monitorId, currentTimestamp)
     }
 
+    suspend fun getLastChangedLog(monitorId: Int): CheckLog? {
+        return checkLogDao.getLastChangedLog(monitorId)
+    }
+
     fun ensureDefaultMonitor() {
         viewModelScope.launch(Dispatchers.IO) {
             val monitors = monitorDao.getAllSync()

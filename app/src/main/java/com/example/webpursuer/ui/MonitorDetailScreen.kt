@@ -526,6 +526,101 @@ fun MonitorDetailScreen(
 
                                                 Spacer(modifier = Modifier.height(16.dp))
 
+                                                // Threshold Settings
+                                                Divider()
+                                                Spacer(modifier = Modifier.height(16.dp))
+
+                                                Text(
+                                                        "Notification Threshold",
+                                                        style = MaterialTheme.typography.titleSmall
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+
+                                                // Threshold Type Dropdown
+                                                val thresholdOptions = listOf(
+                                                    "Minimum % of content changed" to "PERCENTAGE",
+                                                    "Minimum characters changed" to "CHARACTER_COUNT"
+                                                )
+                                                var expandedThresholdDropdown by remember { mutableStateOf(false) }
+                                                val selectedThresholdText = thresholdOptions
+                                                    .find { it.second == monitor.thresholdType }
+                                                    ?.first ?: thresholdOptions[0].first
+
+                                                ExposedDropdownMenuBox(
+                                                    expanded = expandedThresholdDropdown,
+                                                    onExpandedChange = { expandedThresholdDropdown = !expandedThresholdDropdown },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    OutlinedTextField(
+                                                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                                        readOnly = true,
+                                                        value = selectedThresholdText,
+                                                        onValueChange = {},
+                                                        label = { Text("Threshold Type") },
+                                                        trailingIcon = {
+                                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedThresholdDropdown)
+                                                        },
+                                                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                                    )
+                                                    ExposedDropdownMenu(
+                                                        expanded = expandedThresholdDropdown,
+                                                        onDismissRequest = { expandedThresholdDropdown = false },
+                                                    ) {
+                                                        thresholdOptions.forEach { option ->
+                                                            DropdownMenuItem(
+                                                                text = { Text(option.first) },
+                                                                onClick = {
+                                                                    viewModel.updateMonitor(
+                                                                        monitor.copy(thresholdType = option.second)
+                                                                    )
+                                                                    expandedThresholdDropdown = false
+                                                                },
+                                                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
+                                                Spacer(modifier = Modifier.height(8.dp))
+
+                                                // Threshold Value Input
+                                                var thresholdValueText by remember(monitor.thresholdValue) {
+                                                    mutableStateOf(
+                                                        if (monitor.thresholdValue == 0.0) "" 
+                                                        else monitor.thresholdValue.toString()
+                                                    )
+                                                }
+
+                                                OutlinedTextField(
+                                                    value = thresholdValueText,
+                                                    onValueChange = { input ->
+                                                        thresholdValueText = input
+                                                        val value = input.toDoubleOrNull() ?: 0.0
+                                                        viewModel.updateMonitor(
+                                                            monitor.copy(thresholdValue = value)
+                                                        )
+                                                    },
+                                                    label = {
+                                                        Text(
+                                                            if (monitor.thresholdType == "PERCENTAGE") 
+                                                                "Threshold % (0 = disabled)" 
+                                                            else 
+                                                                "Threshold characters (0 = disabled)"
+                                                        )
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    singleLine = true,
+                                                    supportingText = {
+                                                        Text(
+                                                            if (monitor.thresholdType == "PERCENTAGE")
+                                                                "Notify only when content changes by at least this %"
+                                                            else
+                                                                "Notify only when at least this many characters change"
+                                                        )
+                                                    }
+                                                )
+
+                                                Spacer(modifier = Modifier.height(16.dp))
                                                 Spacer(modifier = Modifier.height(16.dp))
 
                                                 // AI Configuration Card
