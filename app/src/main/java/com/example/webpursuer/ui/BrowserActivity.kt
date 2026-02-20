@@ -13,8 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -281,8 +281,9 @@ class BrowserActivity : ComponentActivity() {
                             Row(
                                     modifier =
                                             Modifier.fillMaxWidth()
-                                                    .height(56.dp)
                                                     .background(MaterialTheme.colorScheme.surface)
+                                                    .statusBarsPadding()
+                                                    .height(56.dp)
                                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -309,10 +310,6 @@ class BrowserActivity : ComponentActivity() {
                                         shape = MaterialTheme.shapes.small
                                 )
 
-                                IconButton(onClick = { webView.loadUrl(url) }) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = "Go")
-                                }
-
                                 IconButton(
                                         onClick = {
                                             browserViewModel.toggleSelectionMode()
@@ -320,12 +317,16 @@ class BrowserActivity : ComponentActivity() {
                                         }
                                 ) {
                                     Icon(
-                                            imageVector = Icons.Default.Check,
+                                            imageVector = Icons.Default.AddCircle,
                                             contentDescription = "Select",
                                             tint =
                                                     if (isSelecting) Color(0xFF008f39)
                                                     else MaterialTheme.colorScheme.onSurface
                                     )
+                                }
+
+                                IconButton(onClick = { webView.loadUrl(url) }) {
+                                    Icon(Icons.Default.Send, contentDescription = "Go")
                                 }
                             }
 
