@@ -3,6 +3,7 @@ package com.murmli.webpursuer.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.BackoffPolicy
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequest
@@ -90,15 +91,17 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     val initialDelay = target.timeInMillis - now.timeInMillis
 
-                    PeriodicWorkRequestBuilder<SearchWorker>(24, TimeUnit.HOURS)
+                PeriodicWorkRequestBuilder<SearchWorker>(24, TimeUnit.HOURS)
                             .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
                             .setInputData(inputData)
+                            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
                             .build()
                 } else {
                     // Interval
                     val interval = search.intervalMinutes.coerceAtLeast(15) // Minimum 15 mins
-                    PeriodicWorkRequestBuilder<SearchWorker>(interval, TimeUnit.MINUTES)
+PeriodicWorkRequestBuilder<SearchWorker>(interval, TimeUnit.MINUTES)
                             .setInputData(inputData)
+                            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
                             .build()
                 }
 

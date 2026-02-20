@@ -1,6 +1,7 @@
 package com.murmli.webpursuer.data
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -72,7 +73,7 @@ class ReportRepository(private val context: Context, private val reportDao: Repo
 
         val initialDelay = target.timeInMillis - now.timeInMillis
 
-        val workRequest =
+            val workRequest =
                 if (report.scheduleType == "INTERVAL") {
                     PeriodicWorkRequestBuilder<ReportWorker>(
                                     report.intervalHours.toLong(),
@@ -80,11 +81,13 @@ class ReportRepository(private val context: Context, private val reportDao: Repo
                             )
                             .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
                             .setInputData(workDataOf("report_id" to report.id))
+                            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
                             .build()
                 } else {
                     PeriodicWorkRequestBuilder<ReportWorker>(24, TimeUnit.HOURS)
                             .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
                             .setInputData(workDataOf("report_id" to report.id))
+                            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
                             .build()
                 }
 

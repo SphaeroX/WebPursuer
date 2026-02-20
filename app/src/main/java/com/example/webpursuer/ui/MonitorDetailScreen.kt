@@ -129,13 +129,18 @@ fun MonitorDetailScreen(
                                                                 }
                                                         }
                                                 )
-                                                Spacer(modifier = Modifier.height(16.dp))
+                                        }
+                                }
+                        }
 
-                                                // Schedule Settings
+                        item {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
                                                 Text(
-                                                        "Schedule Type",
+                                                        "Schedule Settings",
                                                         style = MaterialTheme.typography.titleMedium
                                                 )
+                                                Spacer(modifier = Modifier.height(8.dp))
 
                                                 // Update state variables to use properties from
                                                 // monitor
@@ -496,8 +501,17 @@ fun MonitorDetailScreen(
                                                         }
                                                 }
 
-                                                Spacer(modifier = Modifier.height(16.dp))
-                                                Divider()
+                                        }
+                                }
+                        }
+
+                        item {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                                Text(
+                                                        "Notifications & Thresholds",
+                                                        style = MaterialTheme.typography.titleMedium
+                                                )
                                                 Spacer(modifier = Modifier.height(16.dp))
 
                                                 // Notification Toggle
@@ -620,12 +634,14 @@ fun MonitorDetailScreen(
                                                     }
                                                 )
 
-                                                Spacer(modifier = Modifier.height(16.dp))
-                                                Spacer(modifier = Modifier.height(16.dp))
+                                        }
+                                }
+                        }
 
-                                                // AI Configuration Card
-                                                val apiKey by
-                                                        viewModel.apiKey.collectAsState(
+                        item {
+                                // AI Configuration Card
+                                val apiKey by
+                                        viewModel.apiKey.collectAsState(
                                                                 initial = null
                                                         )
                                                 val isAiEnabled = !apiKey.isNullOrBlank()
@@ -980,8 +996,6 @@ fun MonitorDetailScreen(
                                                                 }
                                                         }
                                                 }
-                                        }
-                                }
                         }
 
                         // ITEM 2: Section Header

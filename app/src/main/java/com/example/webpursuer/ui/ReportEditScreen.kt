@@ -73,6 +73,7 @@ fun ReportEditScreen(
                         ?: emptySet()
 
         var selectedMonitorIds by remember { mutableStateOf(initialSelection) }
+        var useWebSearch by remember { mutableStateOf(report?.useWebSearch ?: false) }
 
         val context = LocalContext.current
         val timePickerDialog =
@@ -111,28 +112,42 @@ fun ReportEditScreen(
                                         .padding(16.dp)
                                         .verticalScroll(rememberScrollState())
                 ) {
-                        OutlinedTextField(
-                                value = name,
-                                onValueChange = { name = it },
-                                label = { Text("Report Name") },
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                        // General Information Card
+                        androidx.compose.material3.Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text("General Information", style = MaterialTheme.typography.titleMedium)
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        OutlinedTextField(
+                                                value = name,
+                                                onValueChange = { name = it },
+                                                label = { Text("Report Name") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true
+                                        )
+
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        OutlinedTextField(
+                                                value = userPrompt,
+                                                onValueChange = { userPrompt = it },
+                                                label = { Text("LLM Instructions (Prompt)") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                minLines = 3,
+                                                placeholder = {
+                                                        Text("e.g., Summarize the changes as a bulleted list.")
+                                                }
+                                        )
+                                }
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        OutlinedTextField(
-                                value = userPrompt,
-                                onValueChange = { userPrompt = it },
-                                label = { Text("LLM Instructions (Prompt)") },
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = 3,
-                                placeholder = {
-                                        Text("e.g., Summarize the changes as a bulleted list.")
-                                }
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text("Schedule Type", style = MaterialTheme.typography.titleMedium)
+                        // Schedule Card
+                        androidx.compose.material3.Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text("Schedule Settings", style = MaterialTheme.typography.titleMedium)
+                                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Schedule Type Dropdown
                         val options =
@@ -270,132 +285,121 @@ fun ReportEditScreen(
                                         }
                                 }
                         }
+                                }
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Web Search Toggle
-                        var useWebSearch by remember {
-                                mutableStateOf(report?.useWebSearch ?: false)
-                        }
-                        Row(
-                                modifier =
-                                        Modifier.fillMaxWidth()
-                                                .clickable { useWebSearch = !useWebSearch }
-                                                .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                androidx.compose.material3.Switch(
-                                        checked = useWebSearch,
-                                        onCheckedChange = { useWebSearch = it }
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column {
-                                        Text(
-                                                "Enable Web Search",
-                                                style = MaterialTheme.typography.bodyLarge
-                                        )
-                                        Text(
-                                                "Allow AI to search the web during report generation",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                                "Select Websites to Monitor:",
-                                style = MaterialTheme.typography.titleMedium
-                        )
-
-                        Column {
-                                allMonitors.forEach { monitor ->
-                                        Row(
-                                                modifier =
-                                                        Modifier.fillMaxWidth()
-                                                                .clickable {
-                                                                        val current =
-                                                                                selectedMonitorIds
-                                                                                        .toMutableSet()
-                                                                        if (current.contains(
-                                                                                        monitor.id
-                                                                                )
-                                                                        ) {
-                                                                                current.remove(
-                                                                                        monitor.id
-                                                                                )
-                                                                        } else {
-                                                                                current.add(
-                                                                                        monitor.id
-                                                                                )
-                                                                        }
-                                                                        selectedMonitorIds = current
-                                                                }
-                                                                .padding(vertical = 8.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                                Checkbox(
-                                                        checked =
-                                                                selectedMonitorIds.contains(
-                                                                        monitor.id
-                                                                ),
-                                                        onCheckedChange =
-                                                                null // Handled by Row click
-                                                )
-                                                Text(
-                                                        text = monitor.name,
-                                                        modifier = Modifier.padding(start = 8.dp)
-                                                )
-                                        }
-                                }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
+                        // AI Configuration Card
                         val apiKey by reportViewModel.apiKey.collectAsState(initial = null)
                         val isAiEnabled = !apiKey.isNullOrBlank()
 
-                        if (!isAiEnabled) {
-                                androidx.compose.material3.Card(
-                                        colors =
-                                                androidx.compose.material3.CardDefaults.cardColors(
-                                                        containerColor =
-                                                                androidx.compose.material3
-                                                                        .MaterialTheme.colorScheme
-                                                                        .errorContainer
-                                                ),
-                                        modifier = Modifier.fillMaxWidth()
-                                ) {
+                        androidx.compose.material3.Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                )
+                        ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text("AI Configuration", style = MaterialTheme.typography.titleMedium)
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        if (!isAiEnabled) {
+                                                androidx.compose.material3.Card(
+                                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                                                containerColor = MaterialTheme.colorScheme.errorContainer
+                                                        ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Row(
+                                                                modifier = Modifier.padding(8.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Filled.Info,
+                                                                        contentDescription = "Info",
+                                                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                                                )
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Text(
+                                                                        "OpenRouter API Key required in Settings to generate reports.",
+                                                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                                                        style = MaterialTheme.typography.bodySmall,
+                                                                        modifier = Modifier.weight(1f)
+                                                                )
+                                                        }
+                                                }
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                        }
+
                                         Row(
-                                                modifier = Modifier.padding(16.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                                        .clickable { if (isAiEnabled) useWebSearch = !useWebSearch }
+                                                        .padding(vertical = 8.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                                Icon(
-                                                        androidx.compose.material.icons.Icons.Filled
-                                                                .Info,
-                                                        contentDescription = "Info",
-                                                        tint =
-                                                                androidx.compose.material3
-                                                                        .MaterialTheme.colorScheme
-                                                                        .onErrorContainer
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                        "OpenRouter API Key required in Settings to generate reports.",
-                                                        color =
-                                                                androidx.compose.material3
-                                                                        .MaterialTheme.colorScheme
-                                                                        .onErrorContainer,
-                                                        style =
-                                                                androidx.compose.material3
-                                                                        .MaterialTheme.typography
-                                                                        .bodyMedium,
-                                                        modifier = Modifier.weight(1f)
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                                "Enable Web Search",
+                                                                color = if (isAiEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                                        )
+                                                        Text(
+                                                                "Allow AI to search the web during report generation",
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                color = if (isAiEnabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                                        )
+                                                }
+                                                androidx.compose.material3.Switch(
+                                                        checked = useWebSearch,
+                                                        onCheckedChange = { useWebSearch = it },
+                                                        enabled = isAiEnabled
                                                 )
                                         }
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Monitors Card
+                        androidx.compose.material3.Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                                "Data Sources (Websites to Monitor)",
+                                                style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Column {
+                                                allMonitors.forEach { monitor ->
+                                                        Row(
+                                                                modifier = Modifier.fillMaxWidth()
+                                                                        .clickable {
+                                                                                val current = selectedMonitorIds.toMutableSet()
+                                                                                if (current.contains(monitor.id)) {
+                                                                                        current.remove(monitor.id)
+                                                                                } else {
+                                                                                        current.add(monitor.id)
+                                                                                }
+                                                                                selectedMonitorIds = current
+                                                                        }
+                                                                        .padding(vertical = 4.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                                Checkbox(
+                                                                        checked = selectedMonitorIds.contains(monitor.id),
+                                                                        onCheckedChange = null // Handled by Row click
+                                                                )
+                                                                Text(
+                                                                        text = monitor.name,
+                                                                        modifier = Modifier.padding(start = 8.dp)
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
 
                         Button(
                                 onClick = {

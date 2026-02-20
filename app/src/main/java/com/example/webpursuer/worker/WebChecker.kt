@@ -427,8 +427,22 @@ class WebChecker(
 
         if (oldLength == 0 && newLength == 0) return 0.0
         if (oldLength == 0) return 100.0
+        if (oldContent == newContent) return 0.0
 
-        // Calculate Levenshtein distance
+        // Use fast approximation for large strings to prevent ANRs
+        if (oldLength > 2000 || newLength > 2000) {
+            val oldWords = oldContent.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
+            val newWords = newContent.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
+            
+            val intersection = oldWords.intersect(newWords).size
+            val union = oldWords.union(newWords).size
+            
+            if (union == 0) return 0.0
+            val similarity = intersection.toDouble() / union
+            return (1.0 - similarity) * 100.0
+        }
+
+        // Calculate Levenshtein distance for smaller strings
         val distance = levenshteinDistance(oldContent, newContent)
         val maxLength = kotlin.math.max(oldLength, newLength)
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -128,8 +129,8 @@ fun SearchEditScreen(
             // Schedule Card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Schedule", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Schedule Settings", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Dropdown for Schedule Type
                     val options =
@@ -244,9 +245,11 @@ fun SearchEditScreen(
                 }
             }
 
-            // Notification & AI Card
+            // Notifications Card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Notifications", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
@@ -257,22 +260,63 @@ fun SearchEditScreen(
                                 onCheckedChange = { notificationsEnabled = it }
                         )
                     }
+                }
+            }
 
-                    Divider(modifier = Modifier.padding(vertical = 12.dp))
+            // AI Configuration Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("AI Configuration", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("AI Conditions", style = MaterialTheme.typography.titleMedium)
                     if (!isAiEnabled) {
-                        Text(
-                                "OpenRouter API Key required in Settings",
-                                color = MaterialTheme.colorScheme.error
-                        )
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Filled.Info,
+                                    contentDescription = "Info",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "OpenRouter API Key required in Settings",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
 
                     Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Notify only if condition met", modifier = Modifier.weight(1f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Intelligent Condition (LLM)",
+                                color = if (isAiEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            )
+                            Text(
+                                "Notify only if condition met",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isAiEnabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            )
+                        }
                         Switch(
                                 checked = aiConditionEnabled,
                                 onCheckedChange = { aiConditionEnabled = it },
@@ -281,12 +325,14 @@ fun SearchEditScreen(
                     }
 
                     if (aiConditionEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                                 value = aiConditionPrompt,
                                 onValueChange = { aiConditionPrompt = it },
                                 label = { Text("Condition (e.g. Is price < 100?)") },
                                 modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("The AI will answer YES or NO") }
+                                placeholder = { Text("The AI will answer YES or NO") },
+                                enabled = isAiEnabled
                         )
                     }
                 }

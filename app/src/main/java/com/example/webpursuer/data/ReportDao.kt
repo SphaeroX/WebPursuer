@@ -13,6 +13,9 @@ interface ReportDao {
     @Query("SELECT * FROM reports") fun getAll(): Flow<List<Report>>
 
     @Query("SELECT * FROM reports WHERE id = :id") suspend fun getById(id: Int): Report?
+    
+    @Query("SELECT * FROM reports WHERE enabled = 1")
+    fun getAllEnabledSync(): List<Report>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insert(report: Report): Long
 

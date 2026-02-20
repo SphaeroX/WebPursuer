@@ -16,6 +16,9 @@ interface SearchDao {
 
     @Query("SELECT * FROM searches WHERE enabled = 1")
     suspend fun getEnabledSearches(): List<Search>
+    
+    @Query("SELECT * FROM searches WHERE enabled = 1")
+    fun getAllEnabledSync(): List<Search>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertSearch(search: Search): Long
 

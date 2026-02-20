@@ -1,6 +1,8 @@
 package com.murmli.webpursuer
 
-import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -18,31 +20,30 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
-class WebPursuerApp : Application() {
+class BootReceiver : BroadcastReceiver() {
 
-    private val appScope = CoroutineScope(Dispatchers.Default)
-
-    override fun onCreate() {
-        super.onCreate()
-        createNotificationChannel()
-        
-        restoreAllWorkers()
-    }
-    
-    private fun restoreAllWorkers() {
-        appScope.launch {
-            try {
-                restoreWebCheckWorker()
-                restoreSearchWorkers()
-                restoreReportWorkers()
-                Log.d("WebPursuerApp", "All workers restored successfully")
-            } catch (e: Exception) {
-                Log.e("WebPursuerApp", "Error restoring workers: ${e.message}", e)
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
+            intent.action == "android.intent.action.QUICKBOOT_POWERON" ||
+            intent.action == "com.htc.intent.action.QUICKBOOT_POWERON") {
+            
+            Log.d("BootReceiver", "System boot completed - restoring all workers")
+            
+            val appScope = CoroutineScope(Dispatchers.Default)
+            appScope.launch {
+                try {
+                    restoreWebCheckWorker(context)
+                    restoreSearchWorkers(context)
+                    restoreReportWorkers(context)
+                    Log.d("BootReceiver", "All workers restored after boot")
+                } catch (e: Exception) {
+                    Log.e("BootReceiver", "Error restoring workers: ${e.message}", e)
+                }
             }
         }
     }
     
-    private fun restoreWebCheckWorker() {
+    private fun restoreWebCheckWorker(context: Context) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -52,17 +53,17 @@ class WebPursuerApp : Application() {
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
             .build()
 
-        WorkManager.getInstance(this)
+        WorkManager.getInstance(context)
             .enqueueUniquePeriodicWork(
                 "WebCheckWork",
                 ExistingPeriodicWorkPolicy.KEEP,
                 workRequest
             )
-        Log.d("WebPursuerApp", "WebCheckWorker restored")
+        Log.d("BootReceiver", "WebCheckWorker restored")
     }
     
-    private suspend fun restoreSearchWorkers() {
-        val database = AppDatabase.getDatabase(this)
+    private suspend fun restoreSearchWorkers(context: Context) {
+        val database = AppDatabase.getDatabase(context)
         val searchDao = database.searchDao()
         
         val searches = searchDao.getAllEnabledSync()
@@ -99,18 +100,18 @@ class WebPursuerApp : Application() {
                     .build()
             }
             
-            WorkManager.getInstance(this)
+            WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(
                     uniqueWorkName,
                     ExistingPeriodicWorkPolicy.KEEP,
                     workRequest
                 )
-            Log.d("WebPursuerApp", "SearchWorker restored for search ${search.id}")
+            Log.d("BootReceiver", "SearchWorker restored for search ${search.id}")
         }
     }
     
-    private suspend fun restoreReportWorkers() {
-        val database = AppDatabase.getDatabase(this)
+    private suspend fun restoreReportWorkers(context: Context) {
+        val database = AppDatabase.getDatabase(context)
         val reportDao = database.reportDao()
         
         val reports = reportDao.getAllEnabledSync()
@@ -159,29 +160,13 @@ class WebPursuerApp : Application() {
                     .build()
             }
             
-            WorkManager.getInstance(this)
+            WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(
                     workName,
                     ExistingPeriodicWorkPolicy.KEEP,
                     workRequest
                 )
-            Log.d("WebPursuerApp", "ReportWorker restored for report ${report.id}")
-        }
-    }
-
-    private fun createNotificationChannel() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val name = "Web Monitor Updates"
-            val descriptionText = "Notifications for web page changes"
-            val importance = android.app.NotificationManager.IMPORTANCE_DEFAULT
-            val channel =
-                    android.app.NotificationChannel("web_monitor_channel", name, importance).apply {
-                        description = descriptionText
-                    }
-            val notificationManager: android.app.NotificationManager =
-                    getSystemService(android.content.Context.NOTIFICATION_SERVICE) as
-                            android.app.NotificationManager
-            notificationManager.createNotificationChannel(channel)
+            Log.d("BootReceiver", "ReportWorker restored for report ${report.id}")
         }
     }
 }
