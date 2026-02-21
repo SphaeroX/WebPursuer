@@ -226,7 +226,7 @@ class BrowserActivity : ComponentActivity() {
                                             }
                                         } else {
                                             // New Monitor
-                                            monitorViewModel.addMonitor(
+                                            val newMonitorId = monitorViewModel.addMonitor(
                                                     Monitor(
                                                             url = webView.url ?: url,
                                                             name =
@@ -255,6 +255,16 @@ class BrowserActivity : ComponentActivity() {
                                                                 )
                                                             }
                                             )
+                                            
+                                            // Navigate back to MainActivity with the new monitor ID
+                                            val intent = android.content.Intent(
+                                                this@BrowserActivity,
+                                                com.murmli.webpursuer.MainActivity::class.java
+                                            ).apply {
+                                                putExtra("monitorId", newMonitorId)
+                                                flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                            }
+                                            startActivity(intent)
                                         }
                                         showSaveDialog = false
                                         browserViewModel.clearSelection()

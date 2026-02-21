@@ -37,13 +37,13 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         return checkLogDao.getLogsForMonitorFiltered(monitorId)
     }
 
-    fun addMonitor(monitor: Monitor, interactions: List<com.murmli.webpursuer.data.Interaction>) {
-        viewModelScope.launch {
-            val insertedId = monitorDao.insertAndReturnId(monitor)
+    suspend fun addMonitor(monitor: Monitor, interactions: List<com.murmli.webpursuer.data.Interaction>): Int {
+        val insertedId = monitorDao.insertAndReturnId(monitor).toInt()
 
-            val interactionsWithId = interactions.map { it.copy(monitorId = insertedId.toInt()) }
-            interactionDao.insertAll(interactionsWithId)
-        }
+        val interactionsWithId = interactions.map { it.copy(monitorId = insertedId) }
+        interactionDao.insertAll(interactionsWithId)
+        
+        return insertedId
     }
 
     fun updateMonitor(monitor: Monitor) {

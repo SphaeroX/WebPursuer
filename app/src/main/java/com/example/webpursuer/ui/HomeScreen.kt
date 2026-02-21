@@ -57,7 +57,7 @@ fun HomeScreen(
         onAddMonitorClick: () -> Unit
 ) {
     val monitors by monitorViewModel.monitors.collectAsState()
-    var selectedMonitorId by remember { mutableStateOf<Int?>(null) }
+    var selectedMonitorId by remember { mutableStateOf(initialMonitorId) }
 
     val selectedMonitor = monitors.find { it.id == selectedMonitorId }
 
