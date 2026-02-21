@@ -129,13 +129,27 @@ class BrowserActivity : ComponentActivity() {
                         var js = ""
                         var waitTime = 500L // Default small delay for stability between actions
 
+                        val escapedSelector = interaction.selector.replace("'", "\\'")
+                        val findElJs = """
+                            function findEl(sel) {
+                                if (sel.startsWith("xpath=")) {
+                                    return document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                }
+                                if (sel.startsWith("text=")) {
+                                    return document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                }
+                                try { var el = document.querySelector(sel); if (el) return el; } catch(e) {}
+                                return null;
+                            }
+                        """.trimIndent()
+
                         when (interaction.type) {
                             "click" -> {
-                                js = "var el = document.querySelector('${interaction.selector}'); if(el) el.click();"
+                                js = "$findElJs; var el = findEl('$escapedSelector'); if(el) el.click();"
                             }
                             "input" -> {
                                 val escapedValue = interaction.value?.replace("'", "\\'")?.replace("\n", "\\n") ?: ""
-                                js = "var el = document.querySelector('${interaction.selector}'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
+                                js = "$findElJs; var el = findEl('$escapedSelector'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
                             }
                             "scroll" -> {
                                 js = "window.scrollTo({top: ${interaction.value ?: "0"}, behavior: 'smooth'});"
@@ -158,6 +172,14 @@ class BrowserActivity : ComponentActivity() {
                             // Check for cancellation during wait time in small chunks to be responsive
                             val chunks = (waitTime / 100).toInt()
                             for (i in 0..chunks) {
+                                if (isCancelled) break
+                                kotlinx.coroutines.delay(100)
+                            }
+                        }
+
+                        // Wait for page to finish loading if interaction caused navigation
+                        withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            while (webView.progress < 100) {
                                 if (isCancelled) break
                                 kotlinx.coroutines.delay(100)
                             }
@@ -278,7 +300,7 @@ class BrowserActivity : ComponentActivity() {
                                                 monitorViewModel.updateMonitor(
                                                         monitor.copy(
                                                                 selector = selectedSelector!!,
-                                                                url = webView.url ?: actualUrl
+                                                                url = actualUrl
                                                         )
                                                 )
                                             }
@@ -286,14 +308,11 @@ class BrowserActivity : ComponentActivity() {
                                             // New Monitor
                                             val newMonitorId = monitorViewModel.addMonitor(
                                                     Monitor(
-                                                            url = webView.url ?: actualUrl,
+                                                            url = actualUrl,
                                                             name =
                                                                     monitorName.ifBlank {
                                                                         try {
-                                                                            android.net.Uri.parse(
-                                                                                            webView.url
-                                                                                                    ?: actualUrl
-                                                                                    )
+                                                                            android.net.Uri.parse(actualUrl)
                                                                                     .host
                                                                                     ?: "Monitor"
                                                                         } catch (e: Exception) {
@@ -417,6 +436,7 @@ class BrowserActivity : ComponentActivity() {
                                             }
                                             actualUrl = processedUrl
                                             displayUrl = ""
+                                            browserViewModel.clearInteractions()
                                             webView.loadUrl(processedUrl)
                                         }
                                 ) {
@@ -599,6 +619,9 @@ class BrowserActivity : ComponentActivity() {
                                         )
                                 settings.javaScriptEnabled = true
                                 settings.domStorageEnabled = true
+                                settings.databaseEnabled = true
+                                android.webkit.CookieManager.getInstance().setAcceptCookie(true)
+                                android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                                 settings.loadWithOverviewMode = true
                                 settings.useWideViewPort = true
                                 settings.setSupportZoom(true)

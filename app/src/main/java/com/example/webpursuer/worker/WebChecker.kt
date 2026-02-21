@@ -224,6 +224,9 @@ class WebChecker(
                     val webView = WebView(context)
                     webView.settings.javaScriptEnabled = true
                     webView.settings.domStorageEnabled = true
+                    webView.settings.databaseEnabled = true
+                    android.webkit.CookieManager.getInstance().setAcceptCookie(true)
+                    android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
                     webView.webViewClient =
                             object : WebViewClient() {
@@ -271,6 +274,31 @@ class WebChecker(
                 }
             }
 
+    private fun waitForPageLoadThenNext(
+            webView: WebView,
+            interactions: List<com.murmli.webpursuer.data.Interaction>,
+            nextIndex: Int,
+            onComplete: () -> Unit
+    ) {
+        if (webView.progress < 100) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                waitForPageLoadThenNext(webView, interactions, nextIndex, onComplete)
+            }, 500)
+        } else {
+            executeInteractions(webView, interactions, nextIndex, onComplete)
+        }
+    }
+
+    private fun waitForPageLoadThenComplete(webView: WebView, onComplete: () -> Unit) {
+        if (webView.progress < 100) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                waitForPageLoadThenComplete(webView, onComplete)
+            }, 500)
+        } else {
+            onComplete()
+        }
+    }
+
     private fun executeInteractions(
             webView: WebView,
             interactions: List<com.murmli.webpursuer.data.Interaction>,
@@ -278,41 +306,61 @@ class WebChecker(
             onComplete: () -> Unit
     ) {
         if (index >= interactions.size) {
-            onComplete()
+            waitForPageLoadThenComplete(webView, onComplete)
             return
         }
 
         val interaction = interactions[index]
-        val js =
-                when (interaction.type) {
-                    "click" -> "document.querySelector('${interaction.selector}').click();"
-                    "input" ->
-                            "document.querySelector('${interaction.selector}').value = '${interaction.value}'; document.querySelector('${interaction.selector}').dispatchEvent(new Event('change'));"
-                    else -> ""
+        val escapedSelector = interaction.selector.replace("'", "\\'")
+        val findElJs = """
+            function findEl(sel) {
+                if (sel.startsWith("xpath=")) {
+                    return document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                 }
+                if (sel.startsWith("text=")) {
+                    return document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                }
+                try { var el = document.querySelector(sel); if (el) return el; } catch(e) {}
+                return null;
+            }
+        """.trimIndent()
+
+        var js = ""
+        var waitTime = 500L
+
+        when (interaction.type) {
+            "click" -> {
+                js = "$findElJs; var el = findEl('$escapedSelector'); if(el) el.click();"
+            }
+            "input" -> {
+                val escapedValue = interaction.value?.replace("'", "\\'")?.replace("\n", "\\n") ?: ""
+                js = "$findElJs; var el = findEl('$escapedSelector'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
+            }
+            "scroll" -> {
+                js = "window.scrollTo({top: ${interaction.value ?: "0"}, behavior: 'smooth'});"
+                waitTime = 1000L
+            }
+            "wait" -> {
+                waitTime = interaction.value?.toLongOrNull() ?: 500L
+                waitTime = waitTime.coerceAtMost(30000L)
+            }
+        }
 
         if (js.isNotEmpty()) {
             webView.evaluateJavascript(js) {
-                // Wait a bit after interaction
-                Handler(Looper.getMainLooper())
-                        .postDelayed(
-                                {
-                                    executeInteractions(
-                                            webView,
-                                            interactions,
-                                            index + 1,
-                                            onComplete
-                                    )
-                                },
-                                2000
-                        ) // 2 seconds delay between actions
+                Handler(Looper.getMainLooper()).postDelayed({
+                    waitForPageLoadThenNext(webView, interactions, index + 1, onComplete)
+                }, waitTime)
             }
         } else {
-            executeInteractions(webView, interactions, index + 1, onComplete)
+            Handler(Looper.getMainLooper()).postDelayed({
+                waitForPageLoadThenNext(webView, interactions, index + 1, onComplete)
+            }, waitTime)
         }
     }
 
     private fun extractContent(webView: WebView, selector: String, callback: (String) -> Unit) {
+        val escapedSelector = selector.replace("'", "\\'")
         val js =
                 """
             (function() {
@@ -322,7 +370,18 @@ class WebChecker(
                     return document.documentElement.outerHTML;
                 }
 
-                var element = document.querySelector('$selector');
+                function findEl(sel) {
+                    if (sel.startsWith("xpath=")) {
+                        return document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    }
+                    if (sel.startsWith("text=")) {
+                        return document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    }
+                    try { var el = document.querySelector(sel); if (el) return el; } catch(e) {}
+                    return null;
+                }
+
+                var element = findEl('$escapedSelector');
                 if (!element) return '';
                 
                 function getRecursiveText(node) {

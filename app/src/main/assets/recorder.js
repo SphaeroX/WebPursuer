@@ -97,7 +97,15 @@
 
     window.highlightSelector = function (selector) {
         try {
-            var el = document.querySelector(selector);
+            var el = null;
+            if (selector.startsWith('xpath=')) {
+                el = document.evaluate(selector.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            } else if (selector.startsWith('text=')) {
+                var xpath = "//*[normalize-space()='" + selector.substring(5).replace(/'/g, "\\'") + "']";
+                el = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            } else {
+                el = document.querySelector(selector);
+            }
             if (el) {
                 updateHighlight(el);
                 // Scroll into view if needed
