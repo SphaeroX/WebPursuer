@@ -49,7 +49,11 @@ class BrowserActivity : ComponentActivity() {
     @Composable
     fun BrowserScreen() {
         var url by remember {
-            mutableStateOf(intent.getStringExtra("initialUrl") ?: "https://google.com")
+            mutableStateOf(if (intent.hasExtra("monitorId")) {
+                intent.getStringExtra("initialUrl") ?: ""
+            } else {
+                ""
+            })
         }
         val isSelecting by browserViewModel.isSelecting.collectAsState()
         val currentSelector by browserViewModel.currentSelector.collectAsState()
@@ -534,8 +538,10 @@ class BrowserActivity : ComponentActivity() {
                                             }
                                         }
                                 addJavascriptInterface(WebAppInterface(context), "Android")
-                                if (!intent.hasExtra("monitorId")) {
+                                if (intent.hasExtra("monitorId")) {
                                     loadUrl(url)
+                                } else if (intent.hasExtra("initialUrl")) {
+                                    loadUrl(intent.getStringExtra("initialUrl")!!)
                                 }
                                 webView = this
                             }
