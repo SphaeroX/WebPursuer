@@ -46,6 +46,21 @@
 
     var selectionMode = false;
     var currentElement = null;
+    var lastInteractionTime = Date.now();
+    var inputTimeout = null;
+    var scrollTimeout = null;
+
+    function recordWithWait(type, selector, value) {
+        if (!window.Android) return;
+        var now = Date.now();
+        var delay = now - lastInteractionTime;
+        // Record wait if there was a pause of more than 500ms
+        if (delay > 500) {
+            window.Android.recordInteraction("wait", "", delay.toString());
+        }
+        lastInteractionTime = now;
+        window.Android.recordInteraction(type, selector, value);
+    }
 
     function updateHighlight(el) {
         // Remove old highlight
@@ -176,9 +191,20 @@
         // Recording logic
         var target = e.target;
         var selector = getCssSelector(target);
-        if (window.Android) {
-            window.Android.recordInteraction("click", selector, "");
-        }
+        recordWithWait("click", selector, "");
+    }, true);
+
+    document.addEventListener('input', function (e) {
+        if (selectionMode) return;
+
+        var target = e.target;
+        var selector = getCssSelector(target);
+        var value = target.value;
+
+        clearTimeout(inputTimeout);
+        inputTimeout = setTimeout(function() {
+            recordWithWait("input", selector, value);
+        }, 800);
     }, true);
 
     document.addEventListener('change', function (e) {
@@ -188,9 +214,18 @@
         var selector = getCssSelector(target);
         var value = target.value;
 
-        if (window.Android) {
-            window.Android.recordInteraction("input", selector, value);
-        }
+        clearTimeout(inputTimeout);
+        recordWithWait("input", selector, value);
+    }, true);
+
+    window.addEventListener('scroll', function (e) {
+        if (selectionMode) return;
+        
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(function() {
+            var scrollPos = window.scrollY || document.documentElement.scrollTop;
+            recordWithWait("scroll", "window", scrollPos.toString());
+        }, 500);
     }, true);
 
 })();

@@ -108,19 +108,36 @@ class BrowserActivity : ComponentActivity() {
                     replayStatus = "Replaying interactions..."
                     interactions.forEachIndexed { index, interaction ->
                         replayStatus = "Replaying action ${index + 1}/${interactions.size}..."
-                        val js =
-                                when (interaction.type) {
-                                    "click" ->
-                                            "document.querySelector('${interaction.selector}').click();"
-                                    "input" ->
-                                            "document.querySelector('${interaction.selector}').value = '${interaction.value}'; document.querySelector('${interaction.selector}').dispatchEvent(new Event('change'));"
-                                    else -> ""
-                                }
+                        var js = ""
+                        var waitTime = 500L // Default small delay for stability between actions
+
+                        when (interaction.type) {
+                            "click" -> {
+                                js = "var el = document.querySelector('${interaction.selector}'); if(el) el.click();"
+                            }
+                            "input" -> {
+                                val escapedValue = interaction.value?.replace("'", "\\'")?.replace("\n", "\\n") ?: ""
+                                js = "var el = document.querySelector('${interaction.selector}'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
+                            }
+                            "scroll" -> {
+                                js = "window.scrollTo({top: ${interaction.value ?: "0"}, behavior: 'smooth'});"
+                                waitTime = 1000L // Extra time for smooth scroll animation
+                            }
+                            "wait" -> {
+                                waitTime = interaction.value?.toLongOrNull() ?: 500L
+                                // Optionally cap to a reasonable max like 30s to prevent hanging too long if accidental
+                                waitTime = waitTime.coerceAtMost(30000L)
+                            }
+                        }
+
                         if (js.isNotEmpty()) {
                             withContext(kotlinx.coroutines.Dispatchers.Main) {
                                 webView.evaluateJavascript(js, null)
                             }
-                            kotlinx.coroutines.delay(2000)
+                        }
+                        
+                        if (waitTime > 0) {
+                            kotlinx.coroutines.delay(waitTime)
                         }
                     }
 
