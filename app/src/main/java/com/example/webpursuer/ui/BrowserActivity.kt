@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -316,7 +317,13 @@ class BrowserActivity : ComponentActivity() {
                                         onValueChange = { displayUrl = it },
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(50.dp),
+                                            .height(50.dp)
+                                            .onFocusChanged { focusState ->
+                                                isUrlFieldFocused = focusState.isFocused
+                                                if (focusState.isFocused && displayUrl.isEmpty()) {
+                                                    displayUrl = ""
+                                                }
+                                            },
                                         singleLine = true,
                                         colors =
                                                 TextFieldDefaults.colors(
@@ -331,14 +338,7 @@ class BrowserActivity : ComponentActivity() {
                                                                     .colorScheme
                                                                     .surfaceVariant
                                                 ),
-                                        shape = MaterialTheme.shapes.small,
-                                        focusable = true,
-                                        onFocusChanged = { focusState ->
-                                            isUrlFieldFocused = focusState.isFocused
-                                            if (focusState.isFocused && displayUrl.isEmpty()) {
-                                                displayUrl = ""
-                                            }
-                                        }
+                                        shape = MaterialTheme.shapes.small
                                 )
 
                                 IconButton(
@@ -576,7 +576,7 @@ class BrowserActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
-                                addJavascriptInterface(WebAppInterface(context), Android)
+                                addJavascriptInterface(WebAppInterface(context), "Android")
                                 if (intent.hasExtra("monitorId")) {
                                     loadUrl(actualUrl)
                                 } else if (intent.hasExtra("initialUrl")) {

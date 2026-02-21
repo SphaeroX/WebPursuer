@@ -180,11 +180,10 @@ fun DiffScreen(
                         },
                         actions = {
                             // Toggle Rendered/Diff view - ALWAYS available now
-                            IconButton(onClick = { showRendered = !showRendered }) {
+                            androidx.compose.material3.TextButton(onClick = { showRendered = !showRendered }) {
                                 Text(
                                         text = if (showRendered) "Show Diff" else "Show MD",
                                         color = Color.White,
-                                        fontSize = 12.sp,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                                 )
                             }
