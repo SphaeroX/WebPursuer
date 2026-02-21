@@ -32,6 +32,7 @@ fun MonitorDetailScreen(
         // Local state for immediate input feedback to avoid cursor jumping
         // We use remember(monitor.id) so it resets if we switch monitors somehow,
         // but not strictly necessary if screen is recreated.
+        var monitorName by remember(monitor.id) { mutableStateOf(monitor.name) }
         var selectorInput by remember(monitor.id) { mutableStateOf(monitor.selector) }
         var aiInstructionInput by
                 remember(monitor.id) { mutableStateOf(monitor.aiInterpreterInstruction) }
@@ -39,12 +40,13 @@ fun MonitorDetailScreen(
 
         // Dropdown state
         var expanded by remember { mutableStateOf(false) }
+        var showRenameDialog by remember { mutableStateOf(false) }
         val intervals = listOf(10L to "10 Minutes", 60L to "1 Hour", 1440L to "24 Hours")
 
         Scaffold(
                 topBar = {
                         TopAppBar(
-                                title = { Text(monitor.name) },
+                                title = { Text(monitorName) },
                                 navigationIcon = {
                                         IconButton(onClick = onBackClick) {
                                                 Icon(
@@ -54,6 +56,12 @@ fun MonitorDetailScreen(
                                         }
                                 },
                                 actions = {
+                                        IconButton(onClick = { showRenameDialog = true }) {
+                                                Icon(
+                                                        Icons.Default.Edit,
+                                                        contentDescription = "Rename Monitor"
+                                                )
+                                        }
                                         IconButton(onClick = { viewModel.checkNow(monitor) }) {
                                                 Icon(
                                                         Icons.Default.Refresh,
@@ -1004,6 +1012,41 @@ fun MonitorDetailScreen(
                         // ITEM 3: Logs List (directly as items in parent LazyColumn)
                         items(logs) { log -> LogItem(log, onClick = { onLogClick(log) }) }
                 }
+        }
+
+        if (showRenameDialog) {
+                var editedName by remember { mutableStateOf(monitorName) }
+                AlertDialog(
+                        onDismissRequest = { showRenameDialog = false },
+                        title = { Text("Rename Monitor") },
+                        text = {
+                                OutlinedTextField(
+                                        value = editedName,
+                                        onValueChange = { editedName = it },
+                                        label = { Text("Monitor Name") },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        },
+                        confirmButton = {
+                                TextButton(
+                                        onClick = {
+                                                if (editedName.isNotBlank()) {
+                                                        viewModel.updateMonitor(monitor.copy(name = editedName))
+                                                        monitorName = editedName
+                                                }
+                                                showRenameDialog = false
+                                        }
+                                ) {
+                                        Text("Save")
+                                }
+                        },
+                        dismissButton = {
+                                TextButton(onClick = { showRenameDialog = false }) {
+                                        Text("Cancel")
+                                }
+                        }
+                )
         }
 }
 
