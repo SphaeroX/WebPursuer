@@ -635,15 +635,15 @@ class WebChecker(
                 )
 
         val notificationText = if (changePercentage != null) {
-            "Content changed for ${monitor.name} (${String.format("%.1f", changePercentage)}%)"
+            "${monitor.name} (${String.format("%.1f", changePercentage)}%)"
         } else {
-            "Content changed for ${monitor.name}"
+            monitor.name
         }
 
         val builder =
                 androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
-                        .setSmallIcon(android.R.drawable.ic_dialog_info)
-                        .setContentTitle("Changes found")
+                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setContentTitle("Monitor")
                         .setContentText(notificationText)
                         .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
                         .setContentIntent(pendingIntent)

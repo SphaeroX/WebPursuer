@@ -74,8 +74,8 @@ class SearchWorker(context: Context, workerParams: WorkerParameters) :
                 if (search.notificationEnabled && aiConditionMet == true) {
                     sendNotification(
                             searchId = search.id,
-                            title = "Search Alert",
-                            message = "Condition met for search: ${search.prompt}"
+                            title = "Search",
+                            message = search.prompt
                     )
                     logRepository.logInfo("SearchWorker", "Condition MET, triggering notification.")
                 }
@@ -83,8 +83,8 @@ class SearchWorker(context: Context, workerParams: WorkerParameters) :
                 if (search.notificationEnabled) {
                     sendNotification(
                             searchId = search.id,
-                            title = "Search Result",
-                            message = "New search result for: ${search.prompt}"
+                            title = "Search",
+                            message = search.prompt
                     )
                 }
             }
@@ -135,15 +135,12 @@ class SearchWorker(context: Context, workerParams: WorkerParameters) :
                                 android.app.PendingIntent.FLAG_UPDATE_CURRENT
                 )
 
-        // Using same channel as Monitors for now "web_monitor_channel" or "search_channel" if
-        // created.
-        // Assuming "web_monitor_channel" is the main one created in App.
         val builder =
                 androidx.core.app.NotificationCompat.Builder(
                                 applicationContext,
                                 "web_monitor_channel"
                         )
-                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                        .setSmallIcon(android.R.drawable.ic_menu_search)
                         .setContentTitle(title)
                         .setContentText(message)
                         .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)

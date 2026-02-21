@@ -249,9 +249,9 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
                                 applicationContext,
                                 "web_monitor_channel"
                         )
-                        .setSmallIcon(android.R.drawable.ic_dialog_info)
-                        .setContentTitle("New Report Available")
-                        .setContentText("Report $title created")
+                        .setSmallIcon(android.R.drawable.ic_menu_edit)
+                        .setContentTitle("Report")
+                        .setContentText(title)
                         .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
                         .setContentIntent(pendingIntent)
                         .setAutoCancel(true)
