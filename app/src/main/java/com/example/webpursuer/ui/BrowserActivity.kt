@@ -48,13 +48,19 @@ class BrowserActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun BrowserScreen() {
-        var url by remember {
-            mutableStateOf(if (intent.hasExtra("monitorId")) {
-                intent.getStringExtra("initialUrl") ?: ""
-            } else {
-                ""
-            })
+        var displayUrl by remember {
+            mutableStateOf("")
         }
+        var actualUrl by remember {
+            mutableStateOf(
+                if (intent.hasExtra("monitorId")) {
+                    intent.getStringExtra("initialUrl") ?: "https://www.google.com"
+                } else {
+                    "https://www.google.com"
+                }
+            )
+        }
+        var isUrlFieldFocused by remember { mutableStateOf(false) }
         val isSelecting by browserViewModel.isSelecting.collectAsState()
         val currentSelector by browserViewModel.currentSelector.collectAsState()
         var monitorName by remember { mutableStateOf("") }
@@ -83,7 +89,7 @@ class BrowserActivity : ComponentActivity() {
                 val monitor = monitorViewModel.getMonitor(id)
                 if (monitor != null) {
                     monitorName = monitor.name
-                    url = monitor.url
+                    actualUrl = monitor.url
                     val interactions = monitorViewModel.getInteractions(id)
 
                     // Wait for WebView to be ready and page to load
@@ -91,7 +97,7 @@ class BrowserActivity : ComponentActivity() {
                     while (!::webView.isInitialized) {
                         kotlinx.coroutines.delay(100)
                     }
-                    webView.loadUrl(url)
+                    webView.loadUrl(actualUrl)
 
                     // Wait for page load (simple delay for now, can be improved with onPageFinished
                     // hook but handling state across composables is tricky)
@@ -220,7 +226,7 @@ class BrowserActivity : ComponentActivity() {
                                                 monitorViewModel.updateMonitor(
                                                         monitor.copy(
                                                                 selector = selectedSelector!!,
-                                                                url = webView.url ?: url
+                                                                url = webView.url ?: actualUrl
                                                         )
                                                 )
                                             }
@@ -228,13 +234,13 @@ class BrowserActivity : ComponentActivity() {
                                             // New Monitor
                                             val newMonitorId = monitorViewModel.addMonitor(
                                                     Monitor(
-                                                            url = webView.url ?: url,
+                                                            url = webView.url ?: actualUrl,
                                                             name =
                                                                     monitorName.ifBlank {
                                                                         try {
                                                                             android.net.Uri.parse(
                                                                                             webView.url
-                                                                                                    ?: url
+                                                                                                    ?: actualUrl
                                                                                     )
                                                                                     .host
                                                                                     ?: "Monitor"
@@ -306,22 +312,33 @@ class BrowserActivity : ComponentActivity() {
                                 }
 
                                 TextField(
-                                        value = url,
-                                        onValueChange = { url = it },
-                                        modifier = Modifier.weight(1f).height(50.dp),
+                                        value = if (isUrlFieldFocused) displayUrl else actualUrl,
+                                        onValueChange = { displayUrl = it },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(50.dp),
                                         singleLine = true,
                                         colors =
                                                 TextFieldDefaults.colors(
                                                         focusedIndicatorColor = Color.Transparent,
                                                         unfocusedIndicatorColor = Color.Transparent,
                                                         focusedContainerColor =
-                                                                MaterialTheme.colorScheme
-                                                                        .surfaceVariant,
+                                                                MaterialTheme
+                                                                    .colorScheme
+                                                                    .surfaceVariant,
                                                         unfocusedContainerColor =
-                                                                MaterialTheme.colorScheme
-                                                                        .surfaceVariant
+                                                                MaterialTheme
+                                                                    .colorScheme
+                                                                    .surfaceVariant
                                                 ),
-                                        shape = MaterialTheme.shapes.small
+                                        shape = MaterialTheme.shapes.small,
+                                        focusable = true,
+                                        onFocusChanged = { focusState ->
+                                            isUrlFieldFocused = focusState.isFocused
+                                            if (focusState.isFocused && displayUrl.isEmpty()) {
+                                                displayUrl = ""
+                                            }
+                                        }
                                 )
 
                                 IconButton(
@@ -339,7 +356,19 @@ class BrowserActivity : ComponentActivity() {
                                     )
                                 }
 
-                                IconButton(onClick = { webView.loadUrl(url) }) {
+                                IconButton(
+                                        onClick = {
+                                            val inputUrl = if (isUrlFieldFocused) displayUrl else actualUrl
+                                            val processedUrl = if (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")) {
+                                                "https://$inputUrl"
+                                            } else {
+                                                inputUrl
+                                            }
+                                            actualUrl = processedUrl
+                                            displayUrl = ""
+                                            webView.loadUrl(processedUrl)
+                                        }
+                                ) {
                                     Icon(Icons.Default.Send, contentDescription = "Go")
                                 }
                             }
@@ -547,9 +576,9 @@ class BrowserActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
-                                addJavascriptInterface(WebAppInterface(context), "Android")
+                                addJavascriptInterface(WebAppInterface(context), Android)
                                 if (intent.hasExtra("monitorId")) {
-                                    loadUrl(url)
+                                    loadUrl(actualUrl)
                                 } else if (intent.hasExtra("initialUrl")) {
                                     loadUrl(intent.getStringExtra("initialUrl")!!)
                                 }

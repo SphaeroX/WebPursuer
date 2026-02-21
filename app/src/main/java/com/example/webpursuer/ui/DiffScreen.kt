@@ -448,7 +448,7 @@ fun DiffScreen(
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(8.dp)) {
                         items(filteredLines) { line ->
                             Text(
-                                    text = line.text,
+                                    text = parseMarkdownText(line.text),
                                     color = line.color,
                                     textDecoration = line.decoration,
                                     modifier = Modifier.fillMaxWidth()
