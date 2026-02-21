@@ -25,7 +25,8 @@
         var path = [];
         while (el.nodeType === Node.ELEMENT_NODE) {
             var selector = el.nodeName.toLowerCase();
-            if (el.id) {
+            var isDynamicId = el.id && (el.id.includes("radix-") || /^:[a-zA-Z0-9_-]+:$/.test(el.id));
+            if (el.id && !isDynamicId) {
                 selector += '#' + el.id;
                 path.unshift(selector);
                 break;

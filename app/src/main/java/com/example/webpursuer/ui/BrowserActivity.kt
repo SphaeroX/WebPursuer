@@ -371,8 +371,8 @@ class BrowserActivity : ComponentActivity() {
                                             .height(50.dp)
                                             .onFocusChanged { focusState ->
                                                 isUrlFieldFocused = focusState.isFocused
-                                                if (focusState.isFocused && displayUrl.isEmpty()) {
-                                                    displayUrl = ""
+                                                if (focusState.isFocused) {
+                                                    displayUrl = if (actualUrl == "https://www.google.com") "" else actualUrl
                                                 }
                                             },
                                         singleLine = true,
