@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,10 +63,21 @@ fun MonitorDetailScreen(
                                                         contentDescription = "Rename Monitor"
                                                 )
                                         }
-                                        IconButton(onClick = { viewModel.checkNow(monitor) }) {
+                                        val context = androidx.compose.ui.platform.LocalContext.current
+                                        IconButton(onClick = {
+                                                // Trigger background check
+                                                viewModel.checkNow(monitor)
+                                                // Open BrowserActivity visually
+                                                val intent = android.content.Intent(context, BrowserActivity::class.java).apply {
+                                                        putExtra("monitorId", monitor.id)
+                                                        putExtra("url", monitor.url)
+                                                        putExtra("isRunMode", true)
+                                                }
+                                                context.startActivity(intent)
+                                        }) {
                                                 Icon(
-                                                        Icons.Default.Refresh,
-                                                        contentDescription = "Check Now"
+                                                        Icons.Default.PlayArrow,
+                                                        contentDescription = "Run Now Visually"
                                                 )
                                         }
                                 }

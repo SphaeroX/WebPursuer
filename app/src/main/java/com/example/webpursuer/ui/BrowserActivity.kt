@@ -144,12 +144,21 @@ class BrowserActivity : ComponentActivity() {
                     replayStatus = "Restoring selection..."
                     withContext(kotlinx.coroutines.Dispatchers.Main) {
                         browserViewModel.updateCurrentSelector(monitor.selector)
-                        browserViewModel.setSelectionMode(true)
+                        
+                        val isRunMode = intent.getBooleanExtra("isRunMode", false)
+                        if (!isRunMode) {
+                            browserViewModel.setSelectionMode(true)
+                        }
+                        
                         // Try to highlight the existing selector
                         webView.evaluateJavascript(
                                 "window.highlightSelector('${monitor.selector}')",
                                 null
                         )
+                        
+                        if (isRunMode) {
+                            android.widget.Toast.makeText(this@BrowserActivity, "Aufzeichnung beendet.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     }
                     isReplaying = false
                 } else {
