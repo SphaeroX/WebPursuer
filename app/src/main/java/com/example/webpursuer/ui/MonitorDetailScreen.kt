@@ -65,6 +65,15 @@ fun MonitorDetailScreen(
                                         }
                                         val context = androidx.compose.ui.platform.LocalContext.current
                                         IconButton(onClick = {
+                                                viewModel.checkNow(monitor)
+                                                android.widget.Toast.makeText(context, "Check im Hintergrund gestartet...", android.widget.Toast.LENGTH_SHORT).show()
+                                        }) {
+                                                Icon(
+                                                        Icons.Default.Refresh,
+                                                        contentDescription = "Fetch New Data"
+                                                )
+                                        }
+                                        IconButton(onClick = {
                                                 // Trigger background check
                                                 viewModel.checkNow(monitor)
                                                 // Open BrowserActivity visually

@@ -12,7 +12,7 @@ android {
         applicationId = "com.murmli.webpursuer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 105
+        versionCode = 107
         versionName = "1.0"
 
         javaCompileOptions {

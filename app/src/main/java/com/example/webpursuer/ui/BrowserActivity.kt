@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -79,6 +80,7 @@ class BrowserActivity : ComponentActivity() {
         var isReplaying by remember { mutableStateOf(false) }
         var replayStatus by remember { mutableStateOf("Initializing...") }
         var checkId by remember { mutableStateOf(-1) }
+        var isCancelled by remember { mutableStateOf(false) }
 
         // Load Monitor Data if editing
         LaunchedEffect(Unit) {
@@ -103,11 +105,27 @@ class BrowserActivity : ComponentActivity() {
                     // Wait for page load (simple delay for now, can be improved with onPageFinished
                     // hook but handling state across composables is tricky)
                     // Better interaction: leverage onPageFinished via a shared state or just wait
-                    kotlinx.coroutines.delay(5000) // Wait for initial load
+                    for (i in 0..50) {
+                        if (isCancelled) break
+                        kotlinx.coroutines.delay(100)
+                    }
 
                     replayStatus = "Replaying interactions..."
-                    interactions.forEachIndexed { index, interaction ->
-                        replayStatus = "Replaying action ${index + 1}/${interactions.size}..."
+                    for ((index, interaction) in interactions.withIndex()) {
+                        if (isCancelled) {
+                            replayStatus = "Abgebrochen"
+                            break
+                        }
+                        
+                        val actionName = when (interaction.type) {
+                            "click" -> "Klicken"
+                            "input" -> "Eingeben"
+                            "scroll" -> "Scrollen"
+                            "wait" -> "Warten"
+                            else -> interaction.type.replaceFirstChar { it.uppercase() }
+                        }
+                        replayStatus = "Aktion ${index + 1}/${interactions.size}: $actionName..."
+                        
                         var js = ""
                         var waitTime = 500L // Default small delay for stability between actions
 
@@ -137,27 +155,34 @@ class BrowserActivity : ComponentActivity() {
                         }
                         
                         if (waitTime > 0) {
-                            kotlinx.coroutines.delay(waitTime)
+                            // Check for cancellation during wait time in small chunks to be responsive
+                            val chunks = (waitTime / 100).toInt()
+                            for (i in 0..chunks) {
+                                if (isCancelled) break
+                                kotlinx.coroutines.delay(100)
+                            }
                         }
                     }
 
-                    replayStatus = "Restoring selection..."
-                    withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        browserViewModel.updateCurrentSelector(monitor.selector)
-                        
-                        val isRunMode = intent.getBooleanExtra("isRunMode", false)
-                        if (!isRunMode) {
-                            browserViewModel.setSelectionMode(true)
-                        }
-                        
-                        // Try to highlight the existing selector
-                        webView.evaluateJavascript(
-                                "window.highlightSelector('${monitor.selector}')",
-                                null
-                        )
-                        
-                        if (isRunMode) {
-                            android.widget.Toast.makeText(this@BrowserActivity, "Aufzeichnung beendet.", android.widget.Toast.LENGTH_SHORT).show()
+                    if (!isCancelled) {
+                        replayStatus = "Restoring selection..."
+                        withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            browserViewModel.updateCurrentSelector(monitor.selector)
+                            
+                            val isRunMode = intent.getBooleanExtra("isRunMode", false)
+                            if (!isRunMode) {
+                                browserViewModel.setSelectionMode(true)
+                            }
+                            
+                            // Try to highlight the existing selector
+                            webView.evaluateJavascript(
+                                    "window.highlightSelector('${monitor.selector}')",
+                                    null
+                            )
+                            
+                            if (isRunMode) {
+                                android.widget.Toast.makeText(this@BrowserActivity, "Aufzeichnung beendet.", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                     isReplaying = false
@@ -623,6 +648,16 @@ class BrowserActivity : ComponentActivity() {
                                         .zIndex(2f),
                         contentAlignment = Alignment.Center
                 ) {
+                    IconButton(
+                        onClick = { isCancelled = true },
+                        modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).statusBarsPadding()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel",
+                            tint = Color.White
+                        )
+                    }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = Color.White)
                         Spacer(modifier = Modifier.height(16.dp))
