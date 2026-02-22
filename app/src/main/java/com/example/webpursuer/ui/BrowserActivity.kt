@@ -168,7 +168,7 @@ class BrowserActivity : ComponentActivity() {
                         when (interaction.type) {
                             "click" -> {
                                 js =
-                                        "$findElJs; var el = findEl('$escapedSelector'); if(el) el.click();"
+                                        "$findElJs; var el = findEl('$escapedSelector'); if(el) { var opts = { bubbles: true, cancelable: true, view: window, buttons: 1 }; el.dispatchEvent(new PointerEvent('pointerdown', opts)); el.dispatchEvent(new MouseEvent('mousedown', opts)); el.dispatchEvent(new PointerEvent('pointerup', opts)); el.dispatchEvent(new MouseEvent('mouseup', opts)); el.dispatchEvent(new MouseEvent('click', opts)); }"
                             }
                             "input" -> {
                                 val escapedValue =
