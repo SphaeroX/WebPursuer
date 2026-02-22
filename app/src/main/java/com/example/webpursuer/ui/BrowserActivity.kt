@@ -52,13 +52,7 @@ class BrowserActivity : ComponentActivity() {
     fun BrowserScreen() {
         var displayUrl by remember { mutableStateOf("") }
         var actualUrl by remember {
-            mutableStateOf(
-                    if (intent.hasExtra("monitorId")) {
-                        intent.getStringExtra("initialUrl") ?: "https://www.google.com"
-                    } else {
-                        "https://www.google.com"
-                    }
-            )
+            mutableStateOf(intent.getStringExtra("initialUrl") ?: "https://www.google.com")
         }
         var isUrlFieldFocused by remember { mutableStateOf(false) }
         val isSelecting by browserViewModel.isSelecting.collectAsState()
@@ -717,11 +711,7 @@ class BrowserActivity : ComponentActivity() {
                                             }
                                         }
                                 addJavascriptInterface(WebAppInterface(context), "Android")
-                                if (intent.hasExtra("monitorId")) {
-                                    loadUrl(actualUrl)
-                                } else if (intent.hasExtra("initialUrl")) {
-                                    loadUrl(intent.getStringExtra("initialUrl")!!)
-                                }
+                                loadUrl(actualUrl)
                                 webView = this
                             }
                         },
