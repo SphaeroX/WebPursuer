@@ -20,29 +20,78 @@
     document.head.appendChild(style);
 
     // --- Helper Functions ---
-    function getCssSelector(el) {
-        if (!(el instanceof Element)) return;
+    function getSelectors(el) {
+        if (!(el instanceof Node) || el.nodeType !== Node.ELEMENT_NODE) return [];
+        var selectors = [];
+
+        // 1. Text-based selector (if short and meaningful)
+        var textContent = "";
+        for (var i = 0; i < el.childNodes.length; i++) {
+            if (el.childNodes[i].nodeType === Node.TEXT_NODE) {
+                textContent += el.childNodes[i].nodeValue;
+            }
+        }
+        textContent = textContent.trim();
+        if (textContent.length > 0 && textContent.length < 100) {
+            selectors.push("text=" + textContent);
+        }
+
+        // 2. Semantic XPath
+        var tagName = el.tagName.toLowerCase();
+        var xpathConditions = [];
+
+        var isDynamicId = el.id && (el.id.includes("radix-") || /^:[a-zA-Z0-9_-]+:$/.test(el.id));
+        if (el.id && !isDynamicId) {
+            xpathConditions.push("@id='" + el.id + "'");
+        }
+
+        var attrs = ['name', 'placeholder', 'role', 'aria-label', 'data-testid'];
+        for (var i = 0; i < attrs.length; i++) {
+            var attr = attrs[i];
+            if (el.hasAttribute(attr)) {
+                var val = el.getAttribute(attr);
+                if (val && !val.includes("'")) { // safety against quotes
+                    xpathConditions.push("@" + attr + "='" + val + "'");
+                }
+            }
+        }
+
+        if (textContent.length > 0 && textContent.length < 100) {
+            xpathConditions.push("normalize-space()='" + textContent.replace(/'/g, "\\'") + "'");
+        }
+
+        if (xpathConditions.length > 0) {
+            var xpath = "xpath=//" + tagName + "[" + xpathConditions.join(" and ") + "]";
+            selectors.push(xpath);
+        }
+
+        // 3. Fallback: Full CSS selector
         var path = [];
-        while (el.nodeType === Node.ELEMENT_NODE) {
-            var selector = el.nodeName.toLowerCase();
-            var isDynamicId = el.id && (el.id.includes("radix-") || /^:[a-zA-Z0-9_-]+:$/.test(el.id));
-            if (el.id && !isDynamicId) {
-                selector += '#' + el.id;
-                path.unshift(selector);
+        var curr = el;
+        while (curr && curr.nodeType === Node.ELEMENT_NODE) {
+            var sel = curr.nodeName.toLowerCase();
+            var dynamicId = curr.id && (curr.id.includes("radix-") || /^:[a-zA-Z0-9_-]+:$/.test(curr.id));
+            if (curr.id && !dynamicId) {
+                sel += '#' + curr.id;
+                path.unshift(sel);
                 break;
             } else {
-                var sib = el, nth = 1;
+                var sib = curr, nth = 1;
                 while (sib = sib.previousElementSibling) {
-                    if (sib.nodeName.toLowerCase() == selector)
+                    if (sib.nodeName.toLowerCase() == sel)
                         nth++;
                 }
                 if (nth != 1)
-                    selector += ":nth-of-type(" + nth + ")";
+                    sel += ":nth-of-type(" + nth + ")";
             }
-            path.unshift(selector);
-            el = el.parentNode;
+            path.unshift(sel);
+            curr = curr.parentNode;
         }
-        return path.join(" > ");
+        if (path.length > 0) {
+            selectors.push(path.join(" > "));
+        }
+
+        return selectors;
     }
 
     var selectionMode = false;
@@ -51,8 +100,17 @@
     var inputTimeout = null;
     var scrollTimeout = null;
 
-    function recordWithWait(type, selector, value) {
+    function recordWithWait(type, targetElement, value) {
         if (!window.Android) return;
+
+        var selectorStr = "";
+        if (targetElement) {
+            var selectors = getSelectors(targetElement);
+            selectorStr = JSON.stringify(selectors);
+        } else if (type === "scroll" || type === "wait") {
+            selectorStr = "window"; // Or empty string for wait
+        }
+
         var now = Date.now();
         var delay = now - lastInteractionTime;
         // Record wait if there was a pause of more than 500ms
@@ -60,7 +118,7 @@
             window.Android.recordInteraction("wait", "", delay.toString());
         }
         lastInteractionTime = now;
-        window.Android.recordInteraction(type, selector, value);
+        window.Android.recordInteraction(type, selectorStr, value);
     }
 
     function updateHighlight(el) {
@@ -72,9 +130,9 @@
             el.classList.add('webpursuer-highlight');
             currentElement = el;
 
-            var selector = getCssSelector(el);
+            var selectors = getSelectors(el);
             if (window.Android) {
-                window.Android.updateSelector(selector);
+                window.Android.updateSelector(JSON.stringify(selectors));
             }
         } else {
             currentElement = null;
@@ -95,26 +153,43 @@
         console.log("Selection Mode Disabled");
     };
 
-    window.highlightSelector = function (selector) {
+    window.highlightSelector = function (selectorStr) {
+        if (!selectorStr) return;
         try {
-            var el = null;
-            if (selector.startsWith('xpath=')) {
-                el = document.evaluate(selector.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-            } else if (selector.startsWith('text=')) {
-                var xpath = "//*[normalize-space()='" + selector.substring(5).replace(/'/g, "\\'") + "']";
-                el = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-            } else {
-                el = document.querySelector(selector);
+            var selectors = [];
+            try {
+                var parsed = JSON.parse(selectorStr);
+                if (Array.isArray(parsed)) selectors = parsed;
+                else selectors = [selectorStr];
+            } catch (e) {
+                selectors = [selectorStr];
             }
+
+            var el = null;
+            for (var i = 0; i < selectors.length; i++) {
+                var selector = selectors[i];
+                try {
+                    if (selector.startsWith('xpath=')) {
+                        el = document.evaluate(selector.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    } else if (selector.startsWith('text=')) {
+                        var xpath = "//*[normalize-space()='" + selector.substring(5).replace(/'/g, "\\'") + "']";
+                        el = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    } else {
+                        el = document.querySelector(selector);
+                    }
+                } catch (e) { }
+                if (el) break; // First working selector
+            }
+
             if (el) {
                 updateHighlight(el);
                 // Scroll into view if needed
                 el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
             } else {
-                console.log("Element not found for selector: " + selector);
+                console.log("Element not found for selector(s): " + selectorStr);
             }
         } catch (e) {
-            console.error("Invalid selector: " + selector);
+            console.error("Invalid selector matching: " + selectorStr);
         }
     };
 
@@ -199,20 +274,18 @@
 
         // Recording logic
         var target = e.target;
-        var selector = getCssSelector(target);
-        recordWithWait("click", selector, "");
+        recordWithWait("click", target, "");
     }, true);
 
     document.addEventListener('input', function (e) {
         if (selectionMode) return;
 
         var target = e.target;
-        var selector = getCssSelector(target);
         var value = target.value;
 
         clearTimeout(inputTimeout);
-        inputTimeout = setTimeout(function() {
-            recordWithWait("input", selector, value);
+        inputTimeout = setTimeout(function () {
+            recordWithWait("input", target, value);
         }, 800);
     }, true);
 
@@ -220,20 +293,19 @@
         if (selectionMode) return;
 
         var target = e.target;
-        var selector = getCssSelector(target);
         var value = target.value;
 
         clearTimeout(inputTimeout);
-        recordWithWait("input", selector, value);
+        recordWithWait("input", target, value);
     }, true);
 
     window.addEventListener('scroll', function (e) {
         if (selectionMode) return;
-        
+
         clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(function() {
+        scrollTimeout = setTimeout(function () {
             var scrollPos = window.scrollY || document.documentElement.scrollTop;
-            recordWithWait("scroll", "window", scrollPos.toString());
+            recordWithWait("scroll", null, scrollPos.toString());
         }, 500);
     }, true);
 

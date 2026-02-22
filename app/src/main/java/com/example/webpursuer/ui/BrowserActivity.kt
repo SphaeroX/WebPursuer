@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,16 +50,14 @@ class BrowserActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun BrowserScreen() {
-        var displayUrl by remember {
-            mutableStateOf("")
-        }
+        var displayUrl by remember { mutableStateOf("") }
         var actualUrl by remember {
             mutableStateOf(
-                if (intent.hasExtra("monitorId")) {
-                    intent.getStringExtra("initialUrl") ?: "https://www.google.com"
-                } else {
-                    "https://www.google.com"
-                }
+                    if (intent.hasExtra("monitorId")) {
+                        intent.getStringExtra("initialUrl") ?: "https://www.google.com"
+                    } else {
+                        "https://www.google.com"
+                    }
             )
         }
         var isUrlFieldFocused by remember { mutableStateOf(false) }
@@ -116,48 +114,82 @@ class BrowserActivity : ComponentActivity() {
                             replayStatus = "Abgebrochen"
                             break
                         }
-                        
-                        val actionName = when (interaction.type) {
-                            "click" -> "Klicken"
-                            "input" -> "Eingeben"
-                            "scroll" -> "Scrollen"
-                            "wait" -> "Warten"
-                            else -> interaction.type.replaceFirstChar { it.uppercase() }
-                        }
+
+                        val actionName =
+                                when (interaction.type) {
+                                    "click" -> "Klicken"
+                                    "input" -> "Eingeben"
+                                    "scroll" -> "Scrollen"
+                                    "wait" -> "Warten"
+                                    else -> interaction.type.replaceFirstChar { it.uppercase() }
+                                }
                         replayStatus = "Aktion ${index + 1}/${interactions.size}: $actionName..."
-                        
+
                         var js = ""
                         var waitTime = 500L // Default small delay for stability between actions
 
-                        val escapedSelector = interaction.selector.replace("'", "\\'")
-                        val findElJs = """
-                            function findEl(sel) {
-                                if (sel.startsWith("xpath=")) {
-                                    return document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                        val escapedSelector =
+                                interaction
+                                        .selector
+                                        .replace("\\", "\\\\")
+                                        .replace("'", "\\'")
+                                        .replace("\n", "\\n")
+                                        .replace("\r", "\\r")
+                        val findElJs =
+                                """
+                            function findEl(selStr) {
+                                var selectors = [];
+                                try {
+                                    var parsed = JSON.parse(selStr);
+                                    if (Array.isArray(parsed)) selectors = parsed;
+                                    else selectors = [selStr];
+                                } catch(e) {
+                                    selectors = [selStr];
                                 }
-                                if (sel.startsWith("text=")) {
-                                    return document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                for (var i = 0; i < selectors.length; i++) {
+                                    var sel = selectors[i];
+                                    try {
+                                        if (sel.startsWith("xpath=")) {
+                                            var el = document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                            if (el) return el;
+                                        } else if (sel.startsWith("text=")) {
+                                            var el = document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/\'/g, "\\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                            if (el) return el;
+                                        } else {
+                                            var el = document.querySelector(sel);
+                                            if (el) return el;
+                                        }
+                                    } catch(e) {}
                                 }
-                                try { var el = document.querySelector(sel); if (el) return el; } catch(e) {}
                                 return null;
                             }
                         """.trimIndent()
 
                         when (interaction.type) {
                             "click" -> {
-                                js = "$findElJs; var el = findEl('$escapedSelector'); if(el) el.click();"
+                                js =
+                                        "$findElJs; var el = findEl('$escapedSelector'); if(el) el.click();"
                             }
                             "input" -> {
-                                val escapedValue = interaction.value?.replace("'", "\\'")?.replace("\n", "\\n") ?: ""
-                                js = "$findElJs; var el = findEl('$escapedSelector'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
+                                val escapedValue =
+                                        interaction
+                                                .value
+                                                ?.replace("\\", "\\\\")
+                                                ?.replace("'", "\\'")
+                                                ?.replace("\n", "\\n")
+                                                ?: ""
+                                js =
+                                        "$findElJs; var el = findEl('$escapedSelector'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
                             }
                             "scroll" -> {
-                                js = "window.scrollTo({top: ${interaction.value ?: "0"}, behavior: 'smooth'});"
+                                js =
+                                        "window.scrollTo({top: ${interaction.value ?: "0"}, behavior: 'smooth'});"
                                 waitTime = 1000L // Extra time for smooth scroll animation
                             }
                             "wait" -> {
                                 waitTime = interaction.value?.toLongOrNull() ?: 500L
-                                // Optionally cap to a reasonable max like 30s to prevent hanging too long if accidental
+                                // Optionally cap to a reasonable max like 30s to prevent hanging
+                                // too long if accidental
                                 waitTime = waitTime.coerceAtMost(30000L)
                             }
                         }
@@ -167,9 +199,10 @@ class BrowserActivity : ComponentActivity() {
                                 webView.evaluateJavascript(js, null)
                             }
                         }
-                        
+
                         if (waitTime > 0) {
-                            // Check for cancellation during wait time in small chunks to be responsive
+                            // Check for cancellation during wait time in small chunks to be
+                            // responsive
                             val chunks = (waitTime / 100).toInt()
                             for (i in 0..chunks) {
                                 if (isCancelled) break
@@ -190,20 +223,31 @@ class BrowserActivity : ComponentActivity() {
                         replayStatus = "Restoring selection..."
                         withContext(kotlinx.coroutines.Dispatchers.Main) {
                             browserViewModel.updateCurrentSelector(monitor.selector)
-                            
+
                             val isRunMode = intent.getBooleanExtra("isRunMode", false)
                             if (!isRunMode) {
                                 browserViewModel.setSelectionMode(true)
                             }
-                            
+
                             // Try to highlight the existing selector
+                            val escapedMonitorSelector =
+                                    monitor.selector
+                                            .replace("\\", "\\\\")
+                                            .replace("'", "\\'")
+                                            .replace("\n", "\\n")
+                                            .replace("\r", "\\r")
                             webView.evaluateJavascript(
-                                    "window.highlightSelector('${monitor.selector}')",
+                                    "window.highlightSelector('$escapedMonitorSelector')",
                                     null
                             )
-                            
+
                             if (isRunMode) {
-                                android.widget.Toast.makeText(this@BrowserActivity, "Aufzeichnung beendet.", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(
+                                                this@BrowserActivity,
+                                                "Aufzeichnung beendet.",
+                                                android.widget.Toast.LENGTH_SHORT
+                                        )
+                                        .show()
                             }
                         }
                     }
@@ -306,41 +350,58 @@ class BrowserActivity : ComponentActivity() {
                                             }
                                         } else {
                                             // New Monitor
-                                            val newMonitorId = monitorViewModel.addMonitor(
-                                                    Monitor(
-                                                            url = actualUrl,
-                                                            name =
-                                                                    monitorName.ifBlank {
-                                                                        try {
-                                                                            android.net.Uri.parse(actualUrl)
-                                                                                    .host
-                                                                                    ?: "Monitor"
-                                                                        } catch (e: Exception) {
-                                                                            "Monitor"
-                                                                        }
-                                                                    },
-                                                            selector = selectedSelector!!
-                                                    ),
-                                                    browserViewModel.getRecordedInteractions()
-                                                            .mapIndexed { index, data ->
-                                                                Interaction(
-                                                                        monitorId = 0,
-                                                                        type = data.type,
-                                                                        selector = data.selector,
-                                                                        value = data.value,
-                                                                        orderIndex = index
-                                                                )
-                                                            }
-                                            )
-                                            
+                                            val newMonitorId =
+                                                    monitorViewModel.addMonitor(
+                                                            Monitor(
+                                                                    url = actualUrl,
+                                                                    name =
+                                                                            monitorName.ifBlank {
+                                                                                try {
+                                                                                    android.net.Uri
+                                                                                            .parse(
+                                                                                                    actualUrl
+                                                                                            )
+                                                                                            .host
+                                                                                            ?: "Monitor"
+                                                                                } catch (
+                                                                                        e:
+                                                                                                Exception) {
+                                                                                    "Monitor"
+                                                                                }
+                                                                            },
+                                                                    selector = selectedSelector!!
+                                                            ),
+                                                            browserViewModel
+                                                                    .getRecordedInteractions()
+                                                                    .mapIndexed { index, data ->
+                                                                        Interaction(
+                                                                                monitorId = 0,
+                                                                                type = data.type,
+                                                                                selector =
+                                                                                        data.selector,
+                                                                                value = data.value,
+                                                                                orderIndex = index
+                                                                        )
+                                                                    }
+                                                    )
+
                                             // Navigate back to MainActivity with the new monitor ID
-                                            val intent = android.content.Intent(
-                                                this@BrowserActivity,
-                                                com.murmli.webpursuer.MainActivity::class.java
-                                            ).apply {
-                                                putExtra("monitorId", newMonitorId)
-                                                flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                                            }
+                                            val intent =
+                                                    android.content.Intent(
+                                                                    this@BrowserActivity,
+                                                                    com.murmli.webpursuer
+                                                                                    .MainActivity::class
+                                                                            .java
+                                                            )
+                                                            .apply {
+                                                                putExtra("monitorId", newMonitorId)
+                                                                flags =
+                                                                        android.content.Intent
+                                                                                .FLAG_ACTIVITY_CLEAR_TOP or
+                                                                                android.content
+                                                                                        .Intent
+                                                                                        .FLAG_ACTIVITY_NEW_TASK
+                                                            }
                                             startActivity(intent)
                                         }
                                         showSaveDialog = false
@@ -385,28 +446,30 @@ class BrowserActivity : ComponentActivity() {
                                 TextField(
                                         value = if (isUrlFieldFocused) displayUrl else actualUrl,
                                         onValueChange = { displayUrl = it },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(50.dp)
-                                            .onFocusChanged { focusState ->
-                                                isUrlFieldFocused = focusState.isFocused
-                                                if (focusState.isFocused) {
-                                                    displayUrl = if (actualUrl == "https://www.google.com") "" else actualUrl
-                                                }
-                                            },
+                                        modifier =
+                                                Modifier.weight(1f).height(50.dp).onFocusChanged {
+                                                        focusState ->
+                                                    isUrlFieldFocused = focusState.isFocused
+                                                    if (focusState.isFocused) {
+                                                        displayUrl =
+                                                                if (actualUrl ==
+                                                                                "https://www.google.com"
+                                                                )
+                                                                        ""
+                                                                else actualUrl
+                                                    }
+                                                },
                                         singleLine = true,
                                         colors =
                                                 TextFieldDefaults.colors(
                                                         focusedIndicatorColor = Color.Transparent,
                                                         unfocusedIndicatorColor = Color.Transparent,
                                                         focusedContainerColor =
-                                                                MaterialTheme
-                                                                    .colorScheme
-                                                                    .surfaceVariant,
+                                                                MaterialTheme.colorScheme
+                                                                        .surfaceVariant,
                                                         unfocusedContainerColor =
-                                                                MaterialTheme
-                                                                    .colorScheme
-                                                                    .surfaceVariant
+                                                                MaterialTheme.colorScheme
+                                                                        .surfaceVariant
                                                 ),
                                         shape = MaterialTheme.shapes.small
                                 )
@@ -428,20 +491,22 @@ class BrowserActivity : ComponentActivity() {
 
                                 IconButton(
                                         onClick = {
-                                            val inputUrl = if (isUrlFieldFocused) displayUrl else actualUrl
-                                            val processedUrl = if (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")) {
-                                                "https://$inputUrl"
-                                            } else {
-                                                inputUrl
-                                            }
+                                            val inputUrl =
+                                                    if (isUrlFieldFocused) displayUrl else actualUrl
+                                            val processedUrl =
+                                                    if (!inputUrl.startsWith("http://") &&
+                                                                    !inputUrl.startsWith("https://")
+                                                    ) {
+                                                        "https://$inputUrl"
+                                                    } else {
+                                                        inputUrl
+                                                    }
                                             actualUrl = processedUrl
                                             displayUrl = ""
                                             browserViewModel.clearInteractions()
                                             webView.loadUrl(processedUrl)
                                         }
-                                ) {
-                                    Icon(Icons.Default.Send, contentDescription = "Go")
-                                }
+                                ) { Icon(Icons.Default.Send, contentDescription = "Go") }
                             }
 
                             if (isSelecting) {
@@ -621,7 +686,8 @@ class BrowserActivity : ComponentActivity() {
                                 settings.domStorageEnabled = true
                                 settings.databaseEnabled = true
                                 android.webkit.CookieManager.getInstance().setAcceptCookie(true)
-                                android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                                android.webkit.CookieManager.getInstance()
+                                        .setAcceptThirdPartyCookies(this, true)
                                 settings.loadWithOverviewMode = true
                                 settings.useWideViewPort = true
                                 settings.setSupportZoom(true)
@@ -672,13 +738,16 @@ class BrowserActivity : ComponentActivity() {
                         contentAlignment = Alignment.Center
                 ) {
                     IconButton(
-                        onClick = { isCancelled = true },
-                        modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).statusBarsPadding()
+                            onClick = { isCancelled = true },
+                            modifier =
+                                    Modifier.align(Alignment.TopEnd)
+                                            .padding(16.dp)
+                                            .statusBarsPadding()
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Cancel",
-                            tint = Color.White
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cancel",
+                                tint = Color.White
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {

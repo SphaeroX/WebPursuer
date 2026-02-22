@@ -122,25 +122,31 @@ class WebChecker(
                 // Calculate change percentage
                 val previousLog = checkLogDao.getPreviousLog(monitor.id, now)
                 val previousContent = previousLog?.content
-                changePercentage = if (previousContent != null) {
-                    calculateChangePercentage(previousContent, content)
-                } else {
-                    100.0 // If no previous content, assume 100% change
-                }
+                changePercentage =
+                        if (previousContent != null) {
+                            calculateChangePercentage(previousContent, content)
+                        } else {
+                            100.0 // If no previous content, assume 100% change
+                        }
 
                 // Check threshold
                 if (monitor.thresholdValue > 0) {
-                    val thresholdMet = when (monitor.thresholdType) {
-                        "PERCENTAGE" -> changePercentage >= monitor.thresholdValue
-                        "CHARACTER_COUNT" -> {
-                            val charDiff = kotlin.math.abs(content.length - (previousContent?.length ?: 0))
-                            charDiff >= monitor.thresholdValue.toInt()
-                        }
-                        else -> true
-                    }
+                    val thresholdMet =
+                            when (monitor.thresholdType) {
+                                "PERCENTAGE" -> changePercentage >= monitor.thresholdValue
+                                "CHARACTER_COUNT" -> {
+                                    val charDiff =
+                                            kotlin.math.abs(
+                                                    content.length - (previousContent?.length ?: 0)
+                                            )
+                                    charDiff >= monitor.thresholdValue.toInt()
+                                }
+                                else -> true
+                            }
                     if (!thresholdMet) {
                         shouldNotify = false
-                        message += " (below threshold ${monitor.thresholdValue}${if (monitor.thresholdType == "PERCENTAGE") "%" else " chars"})"
+                        message +=
+                                " (below threshold ${monitor.thresholdValue}${if (monitor.thresholdType == "PERCENTAGE") "%" else " chars"})"
                     } else {
                         message += " (${String.format("%.1f", changePercentage)}% change)"
                     }
@@ -192,7 +198,13 @@ class WebChecker(
 
             // Send Notification if needed
             if (result == "CHANGED" && shouldNotify) {
-                sendNotification(monitor.id, logId.toInt(), "Monitor Update", message, changePercentage)
+                sendNotification(
+                        monitor.id,
+                        logId.toInt(),
+                        "Monitor Update",
+                        message,
+                        changePercentage
+                )
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -226,7 +238,8 @@ class WebChecker(
                     webView.settings.domStorageEnabled = true
                     webView.settings.databaseEnabled = true
                     android.webkit.CookieManager.getInstance().setAcceptCookie(true)
-                    android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+                    android.webkit.CookieManager.getInstance()
+                            .setAcceptThirdPartyCookies(webView, true)
 
                     webView.webViewClient =
                             object : WebViewClient() {
@@ -281,9 +294,18 @@ class WebChecker(
             onComplete: () -> Unit
     ) {
         if (webView.progress < 100) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                waitForPageLoadThenNext(webView, interactions, nextIndex, onComplete)
-            }, 500)
+            Handler(Looper.getMainLooper())
+                    .postDelayed(
+                            {
+                                waitForPageLoadThenNext(
+                                        webView,
+                                        interactions,
+                                        nextIndex,
+                                        onComplete
+                                )
+                            },
+                            500
+                    )
         } else {
             executeInteractions(webView, interactions, nextIndex, onComplete)
         }
@@ -291,9 +313,8 @@ class WebChecker(
 
     private fun waitForPageLoadThenComplete(webView: WebView, onComplete: () -> Unit) {
         if (webView.progress < 100) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                waitForPageLoadThenComplete(webView, onComplete)
-            }, 500)
+            Handler(Looper.getMainLooper())
+                    .postDelayed({ waitForPageLoadThenComplete(webView, onComplete) }, 500)
         } else {
             onComplete()
         }
@@ -311,16 +332,39 @@ class WebChecker(
         }
 
         val interaction = interactions[index]
-        val escapedSelector = interaction.selector.replace("'", "\\'")
-        val findElJs = """
-            function findEl(sel) {
-                if (sel.startsWith("xpath=")) {
-                    return document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        val escapedSelector =
+                interaction
+                        .selector
+                        .replace("\\", "\\\\")
+                        .replace("'", "\\'")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+        val findElJs =
+                """
+            function findEl(selStr) {
+                var selectors = [];
+                try {
+                    var parsed = JSON.parse(selStr);
+                    if (Array.isArray(parsed)) selectors = parsed;
+                    else selectors = [selStr];
+                } catch(e) {
+                    selectors = [selStr];
                 }
-                if (sel.startsWith("text=")) {
-                    return document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                for (var i = 0; i < selectors.length; i++) {
+                    var sel = selectors[i];
+                    try {
+                        if (sel.startsWith("xpath=")) {
+                            var el = document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                            if (el) return el;
+                        } else if (sel.startsWith("text=")) {
+                            var el = document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                            if (el) return el;
+                        } else {
+                            var el = document.querySelector(sel);
+                            if (el) return el;
+                        }
+                    } catch(e) {}
                 }
-                try { var el = document.querySelector(sel); if (el) return el; } catch(e) {}
                 return null;
             }
         """.trimIndent()
@@ -333,8 +377,10 @@ class WebChecker(
                 js = "$findElJs; var el = findEl('$escapedSelector'); if(el) el.click();"
             }
             "input" -> {
-                val escapedValue = interaction.value?.replace("'", "\\'")?.replace("\n", "\\n") ?: ""
-                js = "$findElJs; var el = findEl('$escapedSelector'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
+                val escapedValue =
+                        interaction.value?.replace("'", "\\'")?.replace("\n", "\\n") ?: ""
+                js =
+                        "$findElJs; var el = findEl('$escapedSelector'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
             }
             "scroll" -> {
                 js = "window.scrollTo({top: ${interaction.value ?: "0"}, behavior: 'smooth'});"
@@ -348,19 +394,41 @@ class WebChecker(
 
         if (js.isNotEmpty()) {
             webView.evaluateJavascript(js) {
-                Handler(Looper.getMainLooper()).postDelayed({
-                    waitForPageLoadThenNext(webView, interactions, index + 1, onComplete)
-                }, waitTime)
+                Handler(Looper.getMainLooper())
+                        .postDelayed(
+                                {
+                                    waitForPageLoadThenNext(
+                                            webView,
+                                            interactions,
+                                            index + 1,
+                                            onComplete
+                                    )
+                                },
+                                waitTime
+                        )
             }
         } else {
-            Handler(Looper.getMainLooper()).postDelayed({
-                waitForPageLoadThenNext(webView, interactions, index + 1, onComplete)
-            }, waitTime)
+            Handler(Looper.getMainLooper())
+                    .postDelayed(
+                            {
+                                waitForPageLoadThenNext(
+                                        webView,
+                                        interactions,
+                                        index + 1,
+                                        onComplete
+                                )
+                            },
+                            waitTime
+                    )
         }
     }
 
     private fun extractContent(webView: WebView, selector: String, callback: (String) -> Unit) {
-        val escapedSelector = selector.replace("'", "\\'")
+        val escapedSelector =
+                selector.replace("\\", "\\\\")
+                        .replace("'", "\\'")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
         val js =
                 """
             (function() {
@@ -370,14 +438,30 @@ class WebChecker(
                     return document.documentElement.outerHTML;
                 }
 
-                function findEl(sel) {
-                    if (sel.startsWith("xpath=")) {
-                        return document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                function findEl(selStr) {
+                    var selectors = [];
+                    try {
+                        var parsed = JSON.parse(selStr);
+                        if (Array.isArray(parsed)) selectors = parsed;
+                        else selectors = [selStr];
+                    } catch(e) {
+                        selectors = [selStr];
                     }
-                    if (sel.startsWith("text=")) {
-                        return document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                    for (var i = 0; i < selectors.length; i++) {
+                        var sel = selectors[i];
+                        try {
+                            if (sel.startsWith("xpath=")) {
+                                var el = document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                if (el) return el;
+                            } else if (sel.startsWith("text=")) {
+                                var el = document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                if (el) return el;
+                            } else {
+                                var el = document.querySelector(sel);
+                                if (el) return el;
+                            }
+                        } catch(e) {}
                     }
-                    try { var el = document.querySelector(sel); if (el) return el; } catch(e) {}
                     return null;
                 }
 
@@ -443,26 +527,28 @@ class WebChecker(
                     if (result != null && result != "null") {
                         try {
                             var unescaped = result
-                            
+
                             // Remove surrounding quotes if present
                             if (unescaped.startsWith("\"") && unescaped.endsWith("\"")) {
                                 unescaped = unescaped.substring(1, unescaped.length - 1)
                             }
-                            
+
                             // Unescape JSON special characters
-                            unescaped = unescaped
-                                .replace("\\\"", "\"")
-                                .replace("\\\\", "\\")
-                                .replace("\\n", "\n")
-                                .replace("\\r", "\r")
-                                .replace("\\t", "\t")
-                            
+                            unescaped =
+                                    unescaped
+                                            .replace("\\\"", "\"")
+                                            .replace("\\\\", "\\")
+                                            .replace("\\n", "\n")
+                                            .replace("\\r", "\r")
+                                            .replace("\\t", "\t")
+
                             // Decode Unicode escape sequences (\uXXXX)
                             val unicodeRegex = Regex("\\\\u([0-9a-fA-F]{4})")
-                            unescaped = unicodeRegex.replace(unescaped) {
-                                it.groupValues[1].toInt(16).toChar().toString()
-                            }
-                            
+                            unescaped =
+                                    unicodeRegex.replace(unescaped) {
+                                        it.groupValues[1].toInt(16).toChar().toString()
+                                    }
+
                             unescaped
                         } catch (e: Exception) {
                             android.util.Log.e("WebChecker", "Unescape failed", e)
@@ -492,10 +578,10 @@ class WebChecker(
         if (oldLength > 2000 || newLength > 2000) {
             val oldWords = oldContent.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
             val newWords = newContent.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
-            
+
             val intersection = oldWords.intersect(newWords).size
             val union = oldWords.union(newWords).size
-            
+
             if (union == 0) return 0.0
             val similarity = intersection.toDouble() / union
             return (1.0 - similarity) * 100.0
@@ -523,10 +609,11 @@ class WebChecker(
         for (i in 1..m) {
             for (j in 1..n) {
                 val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
-                dp[i][j] = kotlin.math.min(
-                    kotlin.math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
-                    dp[i - 1][j - 1] + cost
-                )
+                dp[i][j] =
+                        kotlin.math.min(
+                                kotlin.math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
+                                dp[i - 1][j - 1] + cost
+                        )
             }
         }
 
@@ -633,27 +720,26 @@ class WebChecker(
     }
 
     private fun decodeHtmlEntities(text: String): String {
-        return text
-            .replace("&quot;", "\"")
-            .replace("&amp;", "&")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&#39;", "'")
-            .replace("&apos;", "'")
-            .replace("&nbsp;", " ")
-            .replace("&ndash;", "–")
-            .replace("&mdash;", "—")
-            .replace("&lsquo;", "'")
-            .replace("&rsquo;", "'")
-            .replace("&ldquo;", "\"")
-            .replace("&rdquo;", "\"")
-            .replace("&hellip;", "…")
-            .replace("&euro;", "€")
-            .replace("&pound;", "£")
-            .replace("&yen;", "¥")
-            .replace("&copy;", "©")
-            .replace("&reg;", "®")
-            .replace("&trade;", "™")
+        return text.replace("&quot;", "\"")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&#39;", "'")
+                .replace("&apos;", "'")
+                .replace("&nbsp;", " ")
+                .replace("&ndash;", "–")
+                .replace("&mdash;", "—")
+                .replace("&lsquo;", "'")
+                .replace("&rsquo;", "'")
+                .replace("&ldquo;", "\"")
+                .replace("&rdquo;", "\"")
+                .replace("&hellip;", "…")
+                .replace("&euro;", "€")
+                .replace("&pound;", "£")
+                .replace("&yen;", "¥")
+                .replace("&copy;", "©")
+                .replace("&reg;", "®")
+                .replace("&trade;", "™")
     }
 
     private suspend fun sendNotification(
@@ -693,11 +779,12 @@ class WebChecker(
                                 android.app.PendingIntent.FLAG_UPDATE_CURRENT
                 )
 
-        val notificationText = if (changePercentage != null) {
-            "${monitor.name} (${String.format("%.1f", changePercentage)}%)"
-        } else {
-            monitor.name
-        }
+        val notificationText =
+                if (changePercentage != null) {
+                    "${monitor.name} (${String.format("%.1f", changePercentage)}%)"
+                } else {
+                    monitor.name
+                }
 
         val builder =
                 androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
