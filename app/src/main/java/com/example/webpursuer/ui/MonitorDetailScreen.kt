@@ -3,6 +3,7 @@ package com.murmli.webpursuer.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -1031,7 +1033,10 @@ fun MonitorDetailScreen(
                         item { Text("Check History", style = MaterialTheme.typography.titleMedium) }
 
                         // ITEM 3: Logs List (directly as items in parent LazyColumn)
-                        items(logs) { log -> LogItem(log, onClick = { onLogClick(log) }) }
+                        itemsIndexed(logs) { index, log -> 
+                            val previousLog = if (index < logs.size - 1) logs[index + 1] else null
+                            LogItem(log, previousLog = previousLog, onClick = { onLogClick(log) }) 
+                        }
                 }
         }
 
@@ -1073,27 +1078,62 @@ fun MonitorDetailScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogItem(log: CheckLog, onClick: () -> Unit) {
+fun LogItem(
+        log: CheckLog,
+        previousLog: CheckLog? = null,
+        onClick: () -> Unit
+) {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-                Row(
-                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                                dateFormat.format(Date(log.timestamp)),
+                                                style = MaterialTheme.typography.labelSmall
+                                        )
+                                        Text(log.message, style = MaterialTheme.typography.bodyMedium)
+                                }
                                 Text(
-                                        dateFormat.format(Date(log.timestamp)),
-                                        style = MaterialTheme.typography.labelSmall
+                                        text = log.result,
+                                        color =
+                                                if (log.result == "CHANGED") MaterialTheme.colorScheme.error
+                                                else MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelMedium
                                 )
-                                Text(log.message, style = MaterialTheme.typography.bodyMedium)
                         }
-                        Text(
-                                text = log.result,
-                                color =
-                                        if (log.result == "CHANGED") MaterialTheme.colorScheme.error
-                                        else MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelMedium
-                        )
+                        if (previousLog != null && log.result == "CHANGED") {
+                                val oldText = previousLog.content ?: ""
+                                val newText = log.content ?: ""
+                                if (oldText.isNotBlank() || newText.isNotBlank()) {
+                                        val diffLines = GenerateDiff(oldText, newText)
+                                        val changedLines = diffLines.filter { it.color != Color.White }.take(5)
+                                        if (changedLines.isNotEmpty()) {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                HorizontalDivider()
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                changedLines.forEach { line ->
+                                                        Text(
+                                                                text = "${if (line.color == Color(0xFF69F0AE)) "+" else "-"} ${line.text}",
+                                                                color = line.color,
+                                                                style = MaterialTheme.typography.bodySmall,
+                                                                modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                }
+                                                val totalChanges = diffLines.count { it.color != Color.White }
+                                                if (totalChanges > 5) {
+                                                        Text(
+                                                                text = "... ${totalChanges - 5} more changes",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = Color.Gray
+                                                        )
+                                                }
+                                        }
+                                }
+                        }
                 }
         }
 }
