@@ -135,6 +135,8 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
 
     val diffFilterMode: Flow<String> = settingsRepository.diffFilterMode
     val diffViewMode: Flow<String> = settingsRepository.diffViewMode
+    val recentChangesPageSize: Flow<Int> = settingsRepository.recentChangesPageSize
+    val recentChangesSortOrder: Flow<String> = settingsRepository.recentChangesSortOrder
     val apiKey: Flow<String?> = settingsRepository.apiKey
 
     fun setDiffFilterMode(mode: String) {
@@ -143,5 +145,25 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
 
     fun setDiffViewMode(mode: String) {
         viewModelScope.launch { settingsRepository.saveDiffViewMode(mode) }
+    }
+
+    fun setRecentChangesPageSize(size: Int) {
+        viewModelScope.launch { settingsRepository.saveRecentChangesPageSize(size) }
+    }
+
+    fun setRecentChangesSortOrder(order: String) {
+        viewModelScope.launch { settingsRepository.saveRecentChangesSortOrder(order) }
+    }
+
+    suspend fun getRecentChangesPaged(limit: Int, offset: Int, sortOrder: String): List<CheckLog> {
+        return if (sortOrder == "ASC") {
+            checkLogDao.getRecentChangesPagedAsc(limit, offset)
+        } else {
+            checkLogDao.getRecentChangesPaged(limit, offset)
+        }
+    }
+
+    suspend fun getTotalChangedCount(): Int {
+        return checkLogDao.getTotalChangedCount()
     }
 }

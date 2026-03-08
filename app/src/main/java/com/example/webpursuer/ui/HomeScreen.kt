@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -40,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.murmli.webpursuer.data.Monitor
@@ -64,6 +68,7 @@ fun HomeScreen(
     // Navigation States
     var showSettings by remember { mutableStateOf(false) }
     var showLogs by remember { mutableStateOf(false) }
+    var showTimeline by remember { mutableStateOf(false) }
     var showReportEdit by remember { mutableStateOf(false) }
     var selectedReportForEdit by remember {
         mutableStateOf<com.murmli.webpursuer.data.Report?>(null)
@@ -83,21 +88,6 @@ fun HomeScreen(
         mutableStateOf(initialGeneratedReportId)
     } // GeneratedReport ID
 
-    // Note: Search History currently just reuses LogScreen or a similar concept.
-    // For now we will allow "History" click on Search to maybe show a temporary placeholder or
-    // reuse LogScreen if implemented.
-    // The requirement said "search should be saved... overview should be similar to Report list...
-    // view history".
-    // We haven't built a specific SearchHistoryScreen yet, but we can verify that later.
-    // For now we'll just show a "Not Implemented" toast or similar if clicked, or maybe simple log
-    // list.
-    // actually, let's implement a basic logs view for search later or assume it's part of the
-    // requirement I missed slightly in "UI Implementation" breakdown beyond SearchList.
-    // Re-reading: "UI Implementation - SearchList: ... view history".
-    // I will assume for this step, History click might effectively do nothing or show a TODO, or I
-    // can quickly scaffold a SearchHistoryScreen if needed.
-    // Let's stick to the prompt plan. I'll add a placeholder lambda for history.
-
     // Diff Screen State
     var diffLogId by remember { mutableStateOf(initialDiffLogId) }
     var diffMonitorId by remember { mutableStateOf(initialMonitorId) }
@@ -112,6 +102,7 @@ fun HomeScreen(
     fun isOnSubScreen(): Boolean {
         return diffLogId != null && diffMonitorId != null ||
                 showLogs ||
+                showTimeline ||
                 showSettings ||
                 showReportContent != null ||
                 showReportHistory != null ||
@@ -127,6 +118,7 @@ fun HomeScreen(
         diffLogId = null
         diffMonitorId = null
         showLogs = false
+        showTimeline = false
         showSettings = false
         showReportContent = null
         showReportHistory = null
@@ -150,6 +142,16 @@ fun HomeScreen(
         )
     } else if (showLogs) {
         LogScreen(onBackClick = { showLogs = false })
+    } else if (showTimeline) {
+        RecentChangesScreen(
+            viewModel = monitorViewModel,
+            onBackClick = { showTimeline = false },
+            onLogClick = { mId, lId ->
+                diffMonitorId = mId
+                diffLogId = lId
+                // showTimeline = false // Keep it true or false based on preference
+            }
+        )
     } else if (showSettings) {
         SettingsScreen(
                 onBackClick = { showSettings = false },
@@ -222,6 +224,12 @@ fun HomeScreen(
                                                         MaterialTheme.colorScheme.onPrimaryContainer
                                         ),
                                 actions = {
+                                    IconButton(onClick = { showTimeline = true }) {
+                                        Icon(
+                                                Icons.Default.DateRange,
+                                                contentDescription = "Timeline"
+                                        )
+                                    }
                                     IconButton(onClick = { showSettings = true }) {
                                         Icon(
                                                 Icons.Default.Settings,
@@ -302,7 +310,9 @@ fun HomeScreen(
                                 selectedReportForEdit = report
                                 showReportEdit = true
                             },
-                            onHistoryClick = { report -> showReportHistory = report.id },
+                            onHistoryClick = { report -> 
+                                showReportHistory = report.id 
+                            },
                             innerPadding = innerPadding
                     )
                 }
@@ -322,108 +332,129 @@ fun HomeScreen(
                     )
                 }
             }
+        }
 
-            if (showAddDialog) {
-                androidx.compose.material3.AlertDialog(
-                        onDismissRequest = { showAddDialog = false },
-                        title = { Text("Create New") },
-                        text = {
-                            Column {
-                                androidx.compose.material3.TextButton(
-                                        onClick = {
-                                            showAddDialog = false
-                                            onAddMonitorClick()
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                ) { Text("New Website Monitor") }
-                                androidx.compose.material3.TextButton(
-                                        onClick = {
-                                            showAddDialog = false
-                                            selectedReportForEdit = null
-                                            showReportEdit = true
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                ) { Text("New Report") }
-                                androidx.compose.material3.TextButton(
-                                        onClick = {
-                                            showAddDialog = false
-                                            selectedSearchForEdit = null
-                                            showSearchEdit = true
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                ) { Text("New Search") }
-                            }
-                        },
-                        confirmButton = {},
-                        dismissButton = {
-                            androidx.compose.material3.TextButton(
-                                    onClick = { showAddDialog = false }
-                            ) { Text("Cancel") }
-                        }
-                )
-            }
+        if (showAddDialog) {
+            AddDialog(
+                onAddMonitor = {
+                    showAddDialog = false
+                    onAddMonitorClick()
+                },
+                onAddReport = {
+                    showAddDialog = false
+                    showReportEdit = true
+                    selectedReportForEdit = null
+                },
+                onAddSearch = {
+                    showAddDialog = false
+                    showSearchEdit = true
+                    selectedSearchForEdit = null
+                },
+                onDismiss = { showAddDialog = false }
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddDialog(
+    onAddMonitor: () -> Unit,
+    onAddReport: () -> Unit,
+    onAddSearch: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Neu hinzufügen") },
+        text = {
+            Column {
+                androidx.compose.material3.TextButton(
+                    onClick = onAddMonitor,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Monitor (Webseite)")
+                    }
+                }
+                androidx.compose.material3.TextButton(
+                    onClick = onAddReport,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Bericht (AI Zusammenfassung)")
+                    }
+                }
+                androidx.compose.material3.TextButton(
+                    onClick = onAddSearch,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Suche (AI Web Suche)")
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Abbrechen")
+            }
+        }
+    )
+}
+
 @Composable
 fun MonitorItem(
-    monitor: Monitor,
-    lastChangePercentage: Double?,
-    onClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+        monitor: Monitor,
+        lastChangePercentage: Double?,
+        onClick: () -> Unit,
+        onEditClick: () -> Unit,
+        onDeleteClick: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+    ) {
         Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = monitor.name, style = MaterialTheme.typography.titleMedium)
-                Text(text = monitor.url, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                        text = monitor.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                        text = monitor.url,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1
+                )
                 if (lastChangePercentage != null) {
                     Text(
-                        text = "Last change: ${String.format("%.1f", lastChangePercentage)}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+                        text = "Change: ${String.format("%.1f", lastChangePercentage)}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (lastChangePercentage > 0) Color(0xFF4CAF50) else Color.Gray
                     )
                 }
             }
-            
-            // Three-dot menu
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            Row {
+                IconButton(onClick = onEditClick) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Edit") },
-                        onClick = {
-                            showMenu = false
-                            onEditClick()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        onClick = {
-                            showMenu = false
-                            onDeleteClick()
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Delete, contentDescription = null)
-                        }
-                    )
+                IconButton(onClick = onDeleteClick) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete")
                 }
             }
         }

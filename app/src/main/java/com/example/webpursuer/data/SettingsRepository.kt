@@ -35,6 +35,9 @@ class SettingsRepository(private val context: Context) {
                 )
         val DIFF_FILTER_MODE = stringPreferencesKey("diff_filter_mode")
         val DIFF_VIEW_MODE = stringPreferencesKey("diff_view_mode") // "DIFF" or "RENDERED"
+        
+        val RECENT_CHANGES_PAGE_SIZE = androidx.datastore.preferences.core.intPreferencesKey("recent_changes_page_size")
+        val RECENT_CHANGES_SORT_ORDER = stringPreferencesKey("recent_changes_sort_order") // "DESC" or "ASC"
     }
 
     val apiKey: Flow<String?> =
@@ -86,6 +89,12 @@ class SettingsRepository(private val context: Context) {
 
     val diffViewMode: Flow<String> =
             context.dataStore.data.map { preferences -> preferences[DIFF_VIEW_MODE] ?: "DIFF" }
+            
+    val recentChangesPageSize: Flow<Int> =
+            context.dataStore.data.map { preferences -> preferences[RECENT_CHANGES_PAGE_SIZE] ?: 10 }
+            
+    val recentChangesSortOrder: Flow<String> =
+            context.dataStore.data.map { preferences -> preferences[RECENT_CHANGES_SORT_ORDER] ?: "DESC" }
 
     suspend fun saveApiKey(key: String) {
         context.dataStore.edit { preferences -> preferences[OPENROUTER_API_KEY] = key }
@@ -133,5 +142,13 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveDiffViewMode(mode: String) {
         context.dataStore.edit { preferences -> preferences[DIFF_VIEW_MODE] = mode }
+    }
+    
+    suspend fun saveRecentChangesPageSize(size: Int) {
+        context.dataStore.edit { preferences -> preferences[RECENT_CHANGES_PAGE_SIZE] = size }
+    }
+    
+    suspend fun saveRecentChangesSortOrder(order: String) {
+        context.dataStore.edit { preferences -> preferences[RECENT_CHANGES_SORT_ORDER] = order }
     }
 }

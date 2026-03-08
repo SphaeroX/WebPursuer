@@ -34,4 +34,13 @@ interface CheckLogDao {
 
         @Query("DELETE FROM check_logs WHERE monitorId = :monitorId")
         suspend fun deleteLogsForMonitor(monitorId: Int)
+
+        @Query("SELECT * FROM check_logs WHERE result = 'CHANGED' ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        suspend fun getRecentChangesPaged(limit: Int, offset: Int): List<CheckLog>
+
+        @Query("SELECT * FROM check_logs WHERE result = 'CHANGED' ORDER BY timestamp ASC LIMIT :limit OFFSET :offset")
+        suspend fun getRecentChangesPagedAsc(limit: Int, offset: Int): List<CheckLog>
+
+        @Query("SELECT COUNT(*) FROM check_logs WHERE result = 'CHANGED'")
+        suspend fun getTotalChangedCount(): Int
 }
