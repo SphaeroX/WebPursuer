@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -65,6 +66,7 @@ fun DiffScreen(
 ) {
     val context = LocalContext.current
     val diffFilterMode by viewModel.diffFilterMode.collectAsState(initial = "ALL")
+    val savedDiffViewMode by viewModel.diffViewMode.collectAsState(initial = "DIFF")
 
     // State for navigation
     val logs by viewModel.getLogsForMonitorFiltered(monitorId).collectAsState(initial = emptyList())
@@ -77,6 +79,9 @@ fun DiffScreen(
     val currentLog = if (currentIndex in logs.indices) logs[currentIndex] else null
     val previousLog = if (currentIndex + 1 in logs.indices) logs[currentIndex + 1] else null
 
+    var showRendered by remember { mutableStateOf(false) }
+    var viewModeInitialized by remember { mutableStateOf(false) }
+
     // Initialize currentIndex based on checkLogId when logs are first loaded
     LaunchedEffect(logs, checkLogId) {
         if (logs.isNotEmpty() && currentIndex == -1) {
@@ -88,18 +93,25 @@ fun DiffScreen(
         }
     }
 
+    // Initialize showRendered from settings or heuristic
+    LaunchedEffect(monitor, currentLog, savedDiffViewMode) {
+        if (!viewModeInitialized && monitor != null) {
+            // Check if we have a saved preference
+            if (savedDiffViewMode == "RENDERED") {
+                showRendered = true
+            } else if (savedDiffViewMode == "DIFF") {
+                showRendered = false
+            } else {
+                // Heuristic if no preference yet
+                showRendered = monitor?.useAiInterpreter == true || isLikelyMarkdown(currentLog?.content)
+            }
+            viewModeInitialized = true
+        }
+    }
+
     var showFilterMenu by remember { mutableStateOf(false) }
     var showVersionSelectionDialog by remember { mutableStateOf(false) }
     var showRaw by remember { mutableStateOf(false) }
-
-    // Default to Rendered view if AI Interpreter is used OR content looks like Markdown
-    // We use a derived state based on monitor loaded.
-    var showRendered by
-            remember(monitor, currentLog) {
-                mutableStateOf(
-                        monitor?.useAiInterpreter == true || isLikelyMarkdown(currentLog?.content)
-                )
-            }
 
     // Helper to change version
     fun goToNewer() {
@@ -180,7 +192,10 @@ fun DiffScreen(
                         },
                         actions = {
                             // Toggle Rendered/Diff view - ALWAYS available now
-                            androidx.compose.material3.TextButton(onClick = { showRendered = !showRendered }) {
+                            androidx.compose.material3.TextButton(onClick = { 
+                                showRendered = !showRendered 
+                                viewModel.setDiffViewMode(if (showRendered) "RENDERED" else "DIFF")
+                            }) {
                                 Text(
                                         text = if (showRendered) "Show Diff" else "Show MD",
                                         color = Color.White,
@@ -210,34 +225,33 @@ fun DiffScreen(
                                         }
                                 )
                                 androidx.compose.material3.HorizontalDivider()
-                                DropdownMenuItem(
-                                        text = { Text("Alle anzeigen") },
+                                
+                                val filterModes = listOf(
+                                    "ALL" to "Alle anzeigen",
+                                    "NEW" to "Nur Neue (Grün)",
+                                    "REMOVED" to "Nur Entfernte (Rot)",
+                                    "UNCHANGED" to "Nur Unveränderte"
+                                )
+                                
+                                filterModes.forEach { (mode, label) ->
+                                    DropdownMenuItem(
+                                        text = { 
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (diffFilterMode == mode) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                } else {
+                                                    Spacer(modifier = Modifier.width(26.dp))
+                                                }
+                                                Text(label)
+                                            }
+                                        },
                                         onClick = {
-                                            viewModel.setDiffFilterMode("ALL")
+                                            viewModel.setDiffFilterMode(mode)
                                             showFilterMenu = false
                                         }
-                                )
-                                DropdownMenuItem(
-                                        text = { Text("Nur Neue (Grün)") },
-                                        onClick = {
-                                            viewModel.setDiffFilterMode("NEW")
-                                            showFilterMenu = false
-                                        }
-                                )
-                                DropdownMenuItem(
-                                        text = { Text("Nur Entfernte (Rot)") },
-                                        onClick = {
-                                            viewModel.setDiffFilterMode("REMOVED")
-                                            showFilterMenu = false
-                                        }
-                                )
-                                DropdownMenuItem(
-                                        text = { Text("Nur Unveränderte") },
-                                        onClick = {
-                                            viewModel.setDiffFilterMode("UNCHANGED")
-                                            showFilterMenu = false
-                                        }
-                                )
+                                    )
+                                }
                             }
 
                             if (monitor != null) {
@@ -400,29 +414,6 @@ fun DiffScreen(
                         // Wrap in LazyColumn for scrolling
                         LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                             item {
-                                // We utilize the existing MarkdownText composable
-                                // Need to ensure color is visible against black background.
-                                // MarkdownText likely uses onSurface which might be black on light
-                                // theme,
-                                // but here container is Black.
-                                // Let's wrap in a Surface to ensure theme colors are consistent if
-                                // needed,
-                                // or force content color.
-                                // Since DiffScreen enforces dark mode (Black container),
-                                // we should check if MarkdownText is adaptive.
-                                // MarkdownText uses MaterialTheme.colorScheme.onSurface.
-                                // If we want it to look good on black, we should provide a dark
-                                // surface or override styles.
-                                // Easiest is to wrap this part in a surface of dark color (or reuse
-                                // scaffold background)
-                                // and ensure theme is dark or just put it in a box with white text.
-                                // But MarkdownText internally sets color.
-                                // Let's assume MaterialTheme handles it or we override
-                                // contentColor.
-
-                                // Override LocalContentColor to White for this section if needed,
-                                // but MarkdownText sets its own color.
-                                // Let's rely on standard Theme.
                                 Surface(color = Color.Black, contentColor = Color.White) {
                                     MarkdownText(
                                             markdown = newText,
@@ -467,24 +458,7 @@ fun GenerateDiff(oldText: String, newText: String): List<DiffLine> {
     val newLines = newText.lines()
     val result = mutableListOf<DiffLine>()
 
-    // Very simple differ: Compare lines.
-    // Ideally use a proper diff algorithm (Myers), but for now efficient enough for small texts
-    // Using a simplistic approach:
-    // If lines match, white.
-    // If old has line not in new -> Removed (Red)
-    // If new has line not in old -> Added (Green)
-    // This simple approach fails for shifts.
-    // Let's use a slightly better heuristics: LCS is too complex to implement from scratch reliably
-    // in one go.
-    // Let's stick to a simple localized lookahead or just standard distinct lines if easy.
-    // Actually, for this specific user request ("like Web Alert"), a simple "What is added, What is
-    // removed" block is often used.
-
-    // Better Approach for this context:
-    // Just show the new text, but highlight added parts in Green.
-    // And show removed parts in Red (maybe interleaved?).
-
-    // Let's implement a basic LCS-based diff for lines.
+    // LCS-based diff for lines.
     val dp = Array(oldLines.size + 1) { IntArray(newLines.size + 1) }
 
     for (i in 1..oldLines.size) {

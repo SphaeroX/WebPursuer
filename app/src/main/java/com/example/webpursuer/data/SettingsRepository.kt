@@ -34,6 +34,7 @@ class SettingsRepository(private val context: Context) {
                         "report_monitor_selection"
                 )
         val DIFF_FILTER_MODE = stringPreferencesKey("diff_filter_mode")
+        val DIFF_VIEW_MODE = stringPreferencesKey("diff_view_mode") // "DIFF" or "RENDERED"
     }
 
     val apiKey: Flow<String?> =
@@ -83,6 +84,9 @@ class SettingsRepository(private val context: Context) {
     val diffFilterMode: Flow<String> =
             context.dataStore.data.map { preferences -> preferences[DIFF_FILTER_MODE] ?: "ALL" }
 
+    val diffViewMode: Flow<String> =
+            context.dataStore.data.map { preferences -> preferences[DIFF_VIEW_MODE] ?: "DIFF" }
+
     suspend fun saveApiKey(key: String) {
         context.dataStore.edit { preferences -> preferences[OPENROUTER_API_KEY] = key }
     }
@@ -125,5 +129,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun saveDiffFilterMode(mode: String) {
         context.dataStore.edit { preferences -> preferences[DIFF_FILTER_MODE] = mode }
+    }
+
+    suspend fun saveDiffViewMode(mode: String) {
+        context.dataStore.edit { preferences -> preferences[DIFF_VIEW_MODE] = mode }
     }
 }

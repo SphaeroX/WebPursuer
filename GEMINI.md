@@ -40,6 +40,9 @@ WebPursuer is a native Android application designed to monitor websites for chan
 *   **Deployment**: APK is located at `app/build/outputs/apk/debug/app-debug.apk` after a successful debug build.
 
 ## Development Conventions
+*   **Versioning**: 
+    *   Always increment `versionCode` by **1** for every change/build.
+    *   Always increment `versionName` by **0.001** (e.g., 1.113 -> 1.114).
 *   **Architecture**: MVVM (Model-View-ViewModel) is used.
 *   **Jetpack Compose**: Primary UI framework. ViewModels are injected into Composable screens.
 *   **Database**: Room is used for persistence. Changes to models require Room migrations if already deployed.
