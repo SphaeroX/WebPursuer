@@ -4,11 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.murmli.webpursuer.data.AppDatabase
 import com.murmli.webpursuer.worker.WebCheckWorker
@@ -19,6 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
+import androidx.work.BackoffPolicy
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -29,10 +27,14 @@ class BootReceiver : BroadcastReceiver() {
             
             Log.d("BootReceiver", "System boot completed - restoring all workers")
             
+            // Note: WebPursuerApp.onCreate also runs when the process starts,
+            // but BootReceiver ensures it's triggered explicitly after boot.
+            // We use the same logic here for safety.
+            
             val appScope = CoroutineScope(Dispatchers.Default)
             appScope.launch {
                 try {
-                    restoreWebCheckWorker(context)
+                    restoreWebCheckWorkers(context)
                     restoreSearchWorkers(context)
                     restoreReportWorkers(context)
                     Log.d("BootReceiver", "All workers restored after boot")
@@ -43,23 +45,20 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
     
-    private fun restoreWebCheckWorker(context: Context) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+    private suspend fun restoreWebCheckWorkers(context: Context) {
+        val database = AppDatabase.getDatabase(context)
+        val monitors = database.monitorDao().getAllSync()
+        
+        // Cancel old legacy global worker if it exists
+        WorkManager.getInstance(context).cancelUniqueWork("WebCheckWork")
 
-        val workRequest = PeriodicWorkRequestBuilder<WebCheckWorker>(15, TimeUnit.MINUTES)
-            .setConstraints(constraints)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
-            .build()
-
-        WorkManager.getInstance(context)
-            .enqueueUniquePeriodicWork(
-                "WebCheckWork",
-                ExistingPeriodicWorkPolicy.KEEP,
-                workRequest
-            )
-        Log.d("BootReceiver", "WebCheckWorker restored")
+        for (monitor in monitors) {
+            if (monitor.enabled) {
+                WebCheckWorker.scheduleMonitor(context, monitor)
+            } else {
+                WebCheckWorker.cancelMonitor(context, monitor.id)
+            }
+        }
     }
     
     private suspend fun restoreSearchWorkers(context: Context) {
@@ -69,7 +68,10 @@ class BootReceiver : BroadcastReceiver() {
         val searches = searchDao.getAllEnabledSync()
         
         for (search in searches) {
-            if (!search.enabled) continue
+            if (!search.enabled) {
+                WorkManager.getInstance(context).cancelUniqueWork("search_${search.id}")
+                continue
+            }
             
             val inputData = androidx.work.workDataOf("searchId" to search.id)
             val uniqueWorkName = "search_${search.id}"
@@ -94,7 +96,7 @@ class BootReceiver : BroadcastReceiver() {
                     .build()
             } else {
                 val interval = search.intervalMinutes.coerceAtLeast(15)
-                PeriodicWorkRequestBuilder<SearchWorker>(interval, TimeUnit.MINUTES)
+                PeriodicWorkRequestBuilder<SearchWorker>(interval.toLong(), TimeUnit.MINUTES)
                     .setInputData(inputData)
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
                     .build()
@@ -103,10 +105,9 @@ class BootReceiver : BroadcastReceiver() {
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(
                     uniqueWorkName,
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     workRequest
                 )
-            Log.d("BootReceiver", "SearchWorker restored for search ${search.id}")
         }
     }
     
@@ -117,9 +118,11 @@ class BootReceiver : BroadcastReceiver() {
         val reports = reportDao.getAllEnabledSync()
         
         for (report in reports) {
-            if (!report.enabled) continue
-            
             val workName = "ReportWorker_${report.id}"
+            if (!report.enabled) {
+                WorkManager.getInstance(context).cancelUniqueWork(workName)
+                continue
+            }
             
             val now = Calendar.getInstance()
             val target = Calendar.getInstance().apply {
@@ -163,10 +166,9 @@ class BootReceiver : BroadcastReceiver() {
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(
                     workName,
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     workRequest
                 )
-            Log.d("BootReceiver", "ReportWorker restored for report ${report.id}")
         }
     }
 }

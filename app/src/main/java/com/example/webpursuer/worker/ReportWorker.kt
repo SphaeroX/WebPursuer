@@ -151,18 +151,22 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
                 if (monitor != null) {
                     sb.append("Website: ${monitor.name} (${monitor.url})\n")
 
-                    for (log in montiorLogs) {
+                    // Only process the latest log for this monitor to avoid text flooding
+                    val latestLog = montiorLogs.maxByOrNull { it.timestamp }
+                    if (latestLog != null) {
+                        val log = latestLog
                         sb.append(
-                                "- At ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(log.timestamp))}: ${log.message}\n"
+                                "- Latest change at ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(log.timestamp))}: ${log.message}\n"
                         )
 
-                        // Fetch previous state for context
-                        val previousLog = checkLogDao.getPreviousLog(monitorId, log.timestamp)
+                        // Fetch previous state for context (from before the first change in this period)
+                        val oldestLog = montiorLogs.minByOrNull { it.timestamp }
+                        val previousLog = oldestLog?.let { checkLogDao.getPreviousLog(monitorId, it.timestamp) } ?: checkLogDao.getPreviousLog(monitorId, log.timestamp)
 
                         if (log.result == "CHANGED") {
                             sb.append("  [CHANGE DETECTED]\n")
                             if (previousLog?.content != null) {
-                                sb.append("  --- OLD CONTENT ---\n")
+                                sb.append("  --- OLD CONTENT (Before this reporting period) ---\n")
                                 sb.append(previousLog.content)
                                 sb.append("\n  -------------------\n")
                             } else {
@@ -170,7 +174,7 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
                             }
 
                             if (log.content != null) {
-                                sb.append("  --- NEW CONTENT ---\n")
+                                sb.append("  --- NEW CONTENT (Latest state) ---\n")
                                 sb.append(log.content)
                                 sb.append("\n  -------------------\n")
                             }

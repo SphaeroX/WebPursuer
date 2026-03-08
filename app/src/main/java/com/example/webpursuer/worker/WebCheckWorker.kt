@@ -1,12 +1,22 @@
 package com.murmli.webpursuer.worker
 
 import android.content.Context
+import android.util.Log
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.murmli.webpursuer.data.AppDatabase
 import com.murmli.webpursuer.data.Monitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
 class WebCheckWorker(context: Context, params: WorkerParameters) :
         CoroutineWorker(context, params) {
@@ -32,37 +42,45 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
 
     override suspend fun doWork(): Result =
             withContext(Dispatchers.IO) {
+                val monitorId = inputData.getInt("monitorId", -1)
+                
                 if (!com.murmli.webpursuer.util.NetworkUtils.isNetworkAvailable(applicationContext)
                 ) {
                     logRepository.logInfo("SYSTEM", "Skipping monitor check: No network available")
                     return@withContext Result.retry()
                 }
-                try {
-                    logRepository.logInfo("SYSTEM", "Starting monitor checks worker")
-                    val monitors =
-                            monitorDao.getAllSync() // We need a sync version or collect the flow
-                    val now = System.currentTimeMillis()
 
-                    for (monitor in monitors) {
-                        if (shouldCheck(monitor, now)) {
-                            logRepository.logInfo(
+                try {
+                    if (monitorId != -1) {
+                        val monitor = monitorDao.getById(monitorId)
+                        if (monitor != null && monitor.enabled) {
+                            if (shouldRunNow(monitor)) {
+                                logRepository.logInfo(
                                     "MONITOR",
                                     "Checking monitor: ${monitor.name} (${monitor.url})"
-                            )
-                            try {
-                                webChecker.checkMonitor(monitor, now)
-                                // Success logging is handled inside WebChecker or we can log here
-                                // if it returns status
-                            } catch (e: Exception) {
-                                logRepository.logError(
-                                        "MONITOR",
-                                        "Error checking monitor ${monitor.name}: ${e.message}",
-                                        e.stackTraceToString()
                                 )
+                                webChecker.checkMonitor(monitor, System.currentTimeMillis())
+                            } else {
+                                Log.d("WebCheckWorker", "Skipping monitor ${monitor.name}: Not scheduled for now")
+                            }
+                        } else {
+                            Log.d("WebCheckWorker", "Monitor $monitorId not found or disabled")
+                        }
+                    } else {
+                        // Legacy support: check all (but this is what we want to avoid)
+                        logRepository.logInfo("SYSTEM", "Running legacy WebCheckWorker (checking all monitors)")
+                        val monitors = monitorDao.getAllSync()
+                        val now = System.currentTimeMillis()
+                        for (monitor in monitors) {
+                            if (shouldRunNow(monitor)) {
+                                try {
+                                    webChecker.checkMonitor(monitor, now)
+                                } catch (e: Exception) {
+                                    logRepository.logError("MONITOR", "Error: ${e.message}")
+                                }
                             }
                         }
                     }
-                    logRepository.logInfo("SYSTEM", "Monitor checks worker finished")
                     Result.success()
                 } catch (e: Exception) {
                     logRepository.logError(
@@ -70,79 +88,75 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                             "WebCheckWorker failed: ${e.message}",
                             e.stackTraceToString()
                     )
-                    e.printStackTrace()
                     Result.retry()
                 }
             }
 
-    private fun shouldCheck(monitor: Monitor, now: Long): Boolean {
-        if (!monitor.enabled) return false
+    private fun shouldRunNow(monitor: Monitor): Boolean {
+        if (monitor.scheduleType != "SPECIFIC_TIME") return true
+        
+        val calendar = Calendar.getInstance()
+        val dayIndex = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7
+        return (monitor.scheduleDays and (1 shl dayIndex)) != 0
+    }
 
-        val isDaily = monitor.scheduleType == "DAILY"
-        val isSpecificTime = monitor.scheduleType == "SPECIFIC_TIME" || isDaily
+    companion object {
+        fun scheduleMonitor(context: Context, monitor: Monitor) {
+            if (!monitor.enabled) {
+                cancelMonitor(context, monitor.id)
+                return
+            }
 
-        if (isSpecificTime) {
-            val calendar = java.util.Calendar.getInstance()
-            calendar.timeInMillis = now
+            val workManager = WorkManager.getInstance(context)
+            val uniqueWorkName = "monitor_check_${monitor.id}"
+            
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
 
-            // Days check
-            // Map Calendar day to bit index (0=Mon ... 6=Sun)
-            val dayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
-            val bitIndex = if (dayOfWeek == java.util.Calendar.SUNDAY) 6 else dayOfWeek - 2
-            val mask = 1 shl bitIndex
+            val inputData = workDataOf("monitorId" to monitor.id)
 
-            // If bit not set, skip (Monitor default scheduleDays is 127 = all days)
-            if ((monitor.scheduleDays and mask) == 0) return false
-
-            // Time check
-            val targetHour: Int
-            val targetMinute: Int
-
-            if (isDaily && monitor.checkTime != null) {
-                val parts = monitor.checkTime.split(":")
-                if (parts.size == 2) {
-                    targetHour = parts[0].toIntOrNull() ?: monitor.scheduleHour
-                    targetMinute = parts[1].toIntOrNull() ?: monitor.scheduleMinute
-                } else {
-                    targetHour = monitor.scheduleHour
-                    targetMinute = monitor.scheduleMinute
+            val workRequest = if (monitor.scheduleType == "SPECIFIC_TIME") {
+                val now = Calendar.getInstance()
+                val target = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, monitor.scheduleHour)
+                    set(Calendar.MINUTE, monitor.scheduleMinute)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
                 }
+                if (target.before(now)) {
+                    target.add(Calendar.DAY_OF_YEAR, 1)
+                }
+                val initialDelay = target.timeInMillis - now.timeInMillis
+                
+                PeriodicWorkRequestBuilder<WebCheckWorker>(24, TimeUnit.HOURS)
+                    .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                    .setInputData(inputData)
+                    .setConstraints(constraints)
+                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
+                    .build()
             } else {
-                targetHour = monitor.scheduleHour
-                targetMinute = monitor.scheduleMinute
+                val interval = monitor.checkIntervalMinutes.coerceAtLeast(15)
+                PeriodicWorkRequestBuilder<WebCheckWorker>(interval, TimeUnit.MINUTES)
+                    .setInputData(inputData)
+                    .setConstraints(constraints)
+                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
+                    .build()
             }
 
-            calendar.set(java.util.Calendar.HOUR_OF_DAY, targetHour)
-            calendar.set(java.util.Calendar.MINUTE, targetMinute)
-            calendar.set(java.util.Calendar.SECOND, 0)
-            calendar.set(java.util.Calendar.MILLISECOND, 0)
-
-            val targetTimeToday = calendar.timeInMillis
-
-            if (now >= targetTimeToday) {
-                // Check if we haven't checked since the target time
-                return monitor.lastCheckTime < targetTimeToday
-            }
-            return false
+            workManager.enqueueUniquePeriodicWork(
+                uniqueWorkName,
+                ExistingPeriodicWorkPolicy.UPDATE, // UPDATE ensures settings change take effect
+                workRequest
+            )
+            Log.d("WebCheckWorker", "Scheduled monitor ${monitor.id} (${monitor.name})")
         }
 
-        // INTERVAL logic
-        val intervalMillis = monitor.checkIntervalMinutes * 60 * 1000
-        if (intervalMillis <= 0) return false
-
-        if (monitor.lastCheckTime == 0L) {
-            // Check start time for first run
-            val calendar = java.util.Calendar.getInstance()
-            calendar.timeInMillis = now
-            calendar.set(java.util.Calendar.HOUR_OF_DAY, monitor.scheduleHour)
-            calendar.set(java.util.Calendar.MINUTE, monitor.scheduleMinute)
-            calendar.set(java.util.Calendar.SECOND, 0)
-            calendar.set(java.util.Calendar.MILLISECOND, 0)
-
-            val targetTimeToday = calendar.timeInMillis
-            return now >= targetTimeToday
+        fun cancelMonitor(context: Context, monitorId: Int) {
+            val workManager = WorkManager.getInstance(context)
+            val uniqueWorkName = "monitor_check_$monitorId"
+            workManager.cancelUniqueWork(uniqueWorkName)
+            Log.d("WebCheckWorker", "Cancelled monitor $monitorId")
         }
-
-        return (now - monitor.lastCheckTime) >= intervalMillis
     }
 }

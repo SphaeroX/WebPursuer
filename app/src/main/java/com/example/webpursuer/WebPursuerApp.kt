@@ -2,11 +2,6 @@ package com.murmli.webpursuer
 
 import android.app.Application
 import android.util.Log
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.murmli.webpursuer.data.AppDatabase
 import com.murmli.webpursuer.worker.WebCheckWorker
@@ -17,6 +12,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
+import androidx.work.BackoffPolicy
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
 
 class WebPursuerApp : Application() {
 
@@ -32,7 +30,7 @@ class WebPursuerApp : Application() {
     private fun restoreAllWorkers() {
         appScope.launch {
             try {
-                restoreWebCheckWorker()
+                restoreWebCheckWorkers()
                 restoreSearchWorkers()
                 restoreReportWorkers()
                 Log.d("WebPursuerApp", "All workers restored successfully")
@@ -42,23 +40,21 @@ class WebPursuerApp : Application() {
         }
     }
     
-    private fun restoreWebCheckWorker() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+    private suspend fun restoreWebCheckWorkers() {
+        val database = AppDatabase.getDatabase(this)
+        val monitors = database.monitorDao().getAllSync()
+        
+        // Cancel old legacy global worker if it exists
+        WorkManager.getInstance(this).cancelUniqueWork("WebCheckWork")
 
-        val workRequest = PeriodicWorkRequestBuilder<WebCheckWorker>(15, TimeUnit.MINUTES)
-            .setConstraints(constraints)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
-            .build()
-
-        WorkManager.getInstance(this)
-            .enqueueUniquePeriodicWork(
-                "WebCheckWork",
-                ExistingPeriodicWorkPolicy.KEEP,
-                workRequest
-            )
-        Log.d("WebPursuerApp", "WebCheckWorker restored")
+        for (monitor in monitors) {
+            if (monitor.enabled) {
+                WebCheckWorker.scheduleMonitor(this, monitor)
+            } else {
+                WebCheckWorker.cancelMonitor(this, monitor.id)
+            }
+        }
+        Log.d("WebPursuerApp", "Individual WebCheckWorkers restored")
     }
     
     private suspend fun restoreSearchWorkers() {
@@ -68,7 +64,10 @@ class WebPursuerApp : Application() {
         val searches = searchDao.getAllEnabledSync()
         
         for (search in searches) {
-            if (!search.enabled) continue
+            if (!search.enabled) {
+                WorkManager.getInstance(this).cancelUniqueWork("search_${search.id}")
+                continue
+            }
             
             val inputData = androidx.work.workDataOf("searchId" to search.id)
             val uniqueWorkName = "search_${search.id}"
@@ -93,7 +92,7 @@ class WebPursuerApp : Application() {
                     .build()
             } else {
                 val interval = search.intervalMinutes.coerceAtLeast(15)
-                PeriodicWorkRequestBuilder<SearchWorker>(interval, TimeUnit.MINUTES)
+                PeriodicWorkRequestBuilder<SearchWorker>(interval.toLong(), TimeUnit.MINUTES)
                     .setInputData(inputData)
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
                     .build()
@@ -102,7 +101,7 @@ class WebPursuerApp : Application() {
             WorkManager.getInstance(this)
                 .enqueueUniquePeriodicWork(
                     uniqueWorkName,
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     workRequest
                 )
             Log.d("WebPursuerApp", "SearchWorker restored for search ${search.id}")
@@ -116,9 +115,11 @@ class WebPursuerApp : Application() {
         val reports = reportDao.getAllEnabledSync()
         
         for (report in reports) {
-            if (!report.enabled) continue
-            
             val workName = "ReportWorker_${report.id}"
+            if (!report.enabled) {
+                WorkManager.getInstance(this).cancelUniqueWork(workName)
+                continue
+            }
             
             val now = Calendar.getInstance()
             val target = Calendar.getInstance().apply {
@@ -162,7 +163,7 @@ class WebPursuerApp : Application() {
             WorkManager.getInstance(this)
                 .enqueueUniquePeriodicWork(
                     workName,
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     workRequest
                 )
             Log.d("WebPursuerApp", "ReportWorker restored for report ${report.id}")

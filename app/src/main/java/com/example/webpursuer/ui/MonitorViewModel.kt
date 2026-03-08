@@ -43,15 +43,24 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         val interactionsWithId = interactions.map { it.copy(monitorId = insertedId) }
         interactionDao.insertAll(interactionsWithId)
         
+        val newMonitor = monitor.copy(id = insertedId)
+        com.murmli.webpursuer.worker.WebCheckWorker.scheduleMonitor(getApplication(), newMonitor)
+        
         return insertedId
     }
 
     fun updateMonitor(monitor: Monitor) {
-        viewModelScope.launch { monitorDao.update(monitor) }
+        viewModelScope.launch { 
+            monitorDao.update(monitor)
+            com.murmli.webpursuer.worker.WebCheckWorker.scheduleMonitor(getApplication(), monitor)
+        }
     }
 
     fun deleteMonitor(monitor: Monitor) {
-        viewModelScope.launch { monitorDao.delete(monitor) }
+        viewModelScope.launch { 
+            monitorDao.delete(monitor)
+            com.murmli.webpursuer.worker.WebCheckWorker.cancelMonitor(getApplication(), monitor.id)
+        }
     }
 
     fun checkNow(monitor: Monitor) {
