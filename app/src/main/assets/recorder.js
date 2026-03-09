@@ -20,11 +20,98 @@
     document.head.appendChild(style);
 
     // --- Helper Functions ---
+    function querySelectorDeep(selector, root = document) {
+        // Try shallow first for performance
+        let el = root.querySelector(selector);
+        if (el) return el;
+        
+        // Optimized deep search
+        function findInShadows(currentRoot) {
+            const all = currentRoot.querySelectorAll('*');
+            for (let i = 0; i < all.length; i++) {
+                const node = all[i];
+                if (node.shadowRoot) {
+                    const found = node.shadowRoot.querySelector(selector) || findInShadows(node.shadowRoot);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+        return findInShadows(root);
+    }
+
+    function getRecursiveText(node) {
+        if (node.nodeType === 3) { // Node.TEXT_NODE
+            return (node.nodeValue || "").trim();
+        }
+        if (node.nodeType !== 1) return ""; // Node.ELEMENT_NODE
+
+        var tagName = node.tagName.toLowerCase();
+        // Skip scripts and styles
+        if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') return "";
+
+        var text = "";
+        var isBlock = false;
+        try {
+            var style = window.getComputedStyle(node);
+            // Skip hidden elements, but leniently
+            if (style.display === 'none' || style.visibility === 'hidden') return "";
+            isBlock = (style.display === 'block' || style.display === 'flex' || style.display === 'grid' || style.display === 'table-row');
+        } catch (e) { }
+
+        // Form elements
+        if (tagName === 'input') {
+            var type = node.type ? node.type.toLowerCase() : 'text';
+            if (type !== 'hidden' && type !== 'submit' && type !== 'button' && type !== 'image') {
+                return node.value || "";
+            }
+        }
+        if (tagName === 'textarea') {
+            return node.value || "";
+        }
+        if (tagName === 'select') {
+            if (node.selectedIndex >= 0) return node.options[node.selectedIndex].text;
+            return "";
+        }
+        if (tagName === 'br') return "\n";
+
+        var childTexts = [];
+        
+        // Traverse Shadow DOM if it exists
+        if (node.shadowRoot) {
+            for (var i = 0; i < node.shadowRoot.childNodes.length; i++) {
+                var childVal = getRecursiveText(node.shadowRoot.childNodes[i]);
+                if (childVal) childTexts.push(childVal);
+            }
+        }
+
+        for (var i = 0; i < node.childNodes.length; i++) {
+            var childVal = getRecursiveText(node.childNodes[i]);
+            if (childVal) childTexts.push(childVal);
+        }
+
+        text = childTexts.join(isBlock ? "\n" : " ");
+        if (isBlock) text = "\n" + text + "\n";
+        return text;
+    }
+
     function getSelectors(el) {
         if (!(el instanceof Node) || el.nodeType !== Node.ELEMENT_NODE) return [];
         var selectors = [];
 
-        // 1. Text-based selector (if short and meaningful)
+        // 1. Stable Attribute Selector (highest priority for SPAs like OpenRouter)
+        var stableAttrs = ['data-testid', 'aria-label', 'name', 'placeholder'];
+        for (var i = 0; i < stableAttrs.length; i++) {
+            var attr = stableAttrs[i];
+            if (el.hasAttribute(attr)) {
+                var val = el.getAttribute(attr);
+                if (val && !val.includes("'")) {
+                    selectors.push(el.tagName.toLowerCase() + "[" + attr + "='" + val + "']");
+                }
+            }
+        }
+
+        // 2. Text-based selector (if short and meaningful)
         var textContent = "";
         for (var i = 0; i < el.childNodes.length; i++) {
             if (el.childNodes[i].nodeType === Node.TEXT_NODE) {
@@ -36,7 +123,7 @@
             selectors.push("text=" + textContent);
         }
 
-        // 2. Semantic XPath
+        // 3. Semantic XPath
         var tagName = el.tagName.toLowerCase();
         var xpathConditions = [];
 
@@ -45,27 +132,25 @@
             xpathConditions.push("@id='" + el.id + "'");
         }
 
-        var attrs = ['name', 'placeholder', 'role', 'aria-label', 'data-testid'];
-        for (var i = 0; i < attrs.length; i++) {
-            var attr = attrs[i];
+        for (var i = 0; i < stableAttrs.length; i++) {
+            var attr = stableAttrs[i];
             if (el.hasAttribute(attr)) {
                 var val = el.getAttribute(attr);
-                if (val && !val.includes("'")) { // safety against quotes
+                if (val && !val.includes("'")) {
                     xpathConditions.push("@" + attr + "='" + val + "'");
                 }
             }
         }
 
-        if (textContent.length > 0 && textContent.length < 100) {
+        if (textContent.length > 0 && textContent.length < 50) {
             xpathConditions.push("normalize-space()='" + textContent.replace(/'/g, "\\'") + "'");
         }
 
         if (xpathConditions.length > 0) {
-            var xpath = "xpath=//" + tagName + "[" + xpathConditions.join(" and ") + "]";
-            selectors.push(xpath);
+            selectors.push("xpath=//" + tagName + "[" + xpathConditions.join(" and ") + "]");
         }
 
-        // 3. Fallback: Full CSS selector
+        // 4. Fallback: Structural CSS selector (shorter version preferred)
         var path = [];
         var curr = el;
         while (curr && curr.nodeType === Node.ELEMENT_NODE) {
@@ -76,16 +161,24 @@
                 path.unshift(sel);
                 break;
             } else {
+                // Try classes if they don't look like tailwind hashes
+                if (curr.classList.length > 0) {
+                    var stableClass = Array.from(curr.classList).find(c => !/[0-9]/.test(c) && c.length > 3);
+                    if (stableClass) {
+                        sel += "." + stableClass;
+                    }
+                }
                 var sib = curr, nth = 1;
                 while (sib = sib.previousElementSibling) {
-                    if (sib.nodeName.toLowerCase() == sel)
+                    if (sib.nodeName.toLowerCase() == curr.nodeName.toLowerCase())
                         nth++;
                 }
-                if (nth != 1)
-                    sel += ":nth-of-type(" + nth + ")";
+                if (nth != 1) sel += ":nth-of-type(" + nth + ")";
             }
             path.unshift(sel);
             curr = curr.parentNode;
+            if (!curr && el.getRootNode() instanceof ShadowRoot) break;
+            if (path.length > 5) break; // Don't make it too deep/brittle
         }
         if (path.length > 0) {
             selectors.push(path.join(" > "));
@@ -175,7 +268,7 @@
                         var xpath = "//*[normalize-space()='" + selector.substring(5).replace(/'/g, "\\'") + "']";
                         el = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                     } else {
-                        el = document.querySelector(selector);
+                        el = querySelectorDeep(selector);
                     }
                 } catch (e) { }
                 if (el) break; // First working selector
@@ -209,56 +302,6 @@
 
     window.getTextContent = function () {
         if (!currentElement) return "";
-
-        function getRecursiveText(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                return (node.nodeValue || "").trim();
-            }
-            if (node.nodeType !== Node.ELEMENT_NODE) return "";
-
-            var tagName = node.tagName.toLowerCase();
-            // Skip scripts and styles
-            if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') return "";
-
-            var text = "";
-            var isBlock = false;
-            try {
-                var style = window.getComputedStyle(node);
-                // Skip hidden elements, but leniently
-                if (style.display === 'none' || style.visibility === 'hidden') return "";
-                isBlock = (style.display === 'block' || style.display === 'flex' || style.display === 'grid' || style.display === 'table-row');
-            } catch (e) { }
-
-            // Form elements
-            if (tagName === 'input') {
-                var type = node.type ? node.type.toLowerCase() : 'text';
-                if (type !== 'hidden' && type !== 'submit' && type !== 'button' && type !== 'image') {
-                    return node.value || "";
-                }
-            }
-            if (tagName === 'textarea') {
-                return node.value || "";
-            }
-            if (tagName === 'select') {
-                if (node.selectedIndex >= 0) return node.options[node.selectedIndex].text;
-                return "";
-            }
-            if (tagName === 'br') return "\n";
-
-            // Children
-            var childTexts = [];
-            for (var i = 0; i < node.childNodes.length; i++) {
-                var childVal = getRecursiveText(node.childNodes[i]);
-                if (childVal) childTexts.push(childVal);
-            }
-
-            text = childTexts.join(isBlock ? "\n" : " ");
-
-            if (isBlock) text = "\n" + text + "\n";
-
-            return text;
-        }
-
         // Clean up multiple newlines
         return getRecursiveText(currentElement).replace(/\n\s*\n/g, '\n').trim();
     };

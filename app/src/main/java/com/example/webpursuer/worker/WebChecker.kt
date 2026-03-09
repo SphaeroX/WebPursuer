@@ -234,12 +234,33 @@ class WebChecker(
             withContext(Dispatchers.Main) {
                 suspendCancellableCoroutine { continuation ->
                     val webView = WebView(context)
+                    
+                    // Crucial: Set a fixed layout size so the browser thinks it's on a real screen
+                    // This triggers responsive rendering and makes elements "visible" for extraction
+                    webView.layout(0, 0, 1280, 1024)
+                    
                     webView.settings.javaScriptEnabled = true
                     webView.settings.domStorageEnabled = true
                     webView.settings.databaseEnabled = true
+                    webView.settings.loadWithOverviewMode = true
+                    webView.settings.useWideViewPort = true
+                    webView.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    
+                    // Use a Desktop User-Agent to avoid simplified mobile layouts and better bypass bot-detection
+                    webView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                    
                     android.webkit.CookieManager.getInstance().setAcceptCookie(true)
                     android.webkit.CookieManager.getInstance()
                             .setAcceptThirdPartyCookies(webView, true)
+
+                    webView.webChromeClient = object : android.webkit.WebChromeClient() {
+                        override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                            consoleMessage?.let {
+                                android.util.Log.d("WebChecker-JS", "${it.messageLevel()}: ${it.message()}")
+                            }
+                            return true
+                        }
+                    }
 
                     webView.webViewClient =
                             object : WebViewClient() {
@@ -259,17 +280,18 @@ class WebChecker(
                                                                 interactions,
                                                                 0
                                                         ) {
-                                                            // After all interactions, extract
-                                                            // content
-                                                            extractContent(webView, selector) { text
-                                                                ->
-                                                                if (continuation.isActive) {
-                                                                    continuation.resume(text)
+                                                            // After all interactions, wait for selector to have content
+                                                            waitForSelectorAndContent(webView, selector) {
+                                                                // Extract content
+                                                                extractContent(webView, selector) { text ->
+                                                                    if (continuation.isActive) {
+                                                                        continuation.resume(text)
+                                                                    }
                                                                 }
                                                             }
                                                         }
                                                     },
-                                                    2000
+                                                    3000
                                             ) // Initial wait
                                 }
 
@@ -279,13 +301,149 @@ class WebChecker(
                                         description: String?,
                                         failingUrl: String?
                                 ) {
-                                    // Handle error
+                                    android.util.Log.e("WebChecker", "Error loading $failingUrl: $description ($errorCode)")
                                 }
                             }
 
                     webView.loadUrl(url)
                 }
             }
+
+    private fun getCommonJsHelpers(): String {
+        return """
+            function querySelectorDeep(selector, root = document) {
+                // Try shallow first for performance
+                let el = root.querySelector(selector);
+                if (el) return el;
+                
+                // Optimized deep search
+                function findInShadows(currentRoot) {
+                    const all = currentRoot.querySelectorAll('*');
+                    for (let i = 0; i < all.length; i++) {
+                        const node = all[i];
+                        if (node.shadowRoot) {
+                            const found = node.shadowRoot.querySelector(selector) || findInShadows(node.shadowRoot);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                }
+                return findInShadows(root);
+            }
+
+            function findEl(selStr, root = document) {
+                var selectors = [];
+                try {
+                    var parsed = JSON.parse(selStr);
+                    if (Array.isArray(parsed)) selectors = parsed;
+                    else selectors = [selStr];
+                } catch(e) {
+                    selectors = [selStr];
+                }
+                for (var i = 0; i < selectors.length; i++) {
+                    var sel = selectors[i];
+                    try {
+                        if (sel.startsWith("xpath=")) {
+                            var el = document.evaluate(sel.substring(6), root, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                            if (el) return el;
+                        } else if (sel.startsWith("text=")) {
+                            // Text selector within root
+                            var el = document.evaluate(".//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", root, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                            if (el) return el;
+                        } else {
+                            var el = querySelectorDeep(sel, root);
+                            if (el) return el;
+                        }
+                    } catch(e) {}
+                }
+                return null;
+            }
+
+            function getRecursiveText(node) {
+                if (node.nodeType === 3) { // Node.TEXT_NODE
+                    return (node.nodeValue || "").trim();
+                }
+                if (node.nodeType !== 1) return ""; // Node.ELEMENT_NODE
+                
+                var tagName = node.tagName.toLowerCase();
+                if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') return "";
+                
+                var text = "";
+                var isBlock = false;
+                try {
+                    var style = window.getComputedStyle(node);
+                    if (style.display === 'none' || style.visibility === 'hidden') return "";
+                    isBlock = (style.display === 'block' || style.display === 'flex' || style.display === 'grid' || style.display === 'table-row');
+                } catch (e) {}
+
+                if (tagName === 'input') {
+                    var type = node.type ? node.type.toLowerCase() : 'text';
+                    if (type !== 'hidden' && type !== 'submit' && type !== 'button' && type !== 'image') {
+                         return node.value || "";
+                    }
+                }
+                if (tagName === 'textarea') return node.value || "";
+                if (tagName === 'select') {
+                     if (node.selectedIndex >= 0) return node.options[node.selectedIndex].text;
+                     return "";
+                }
+                if (tagName === 'br') return "\n";
+                
+                var childTexts = [];
+
+                // Traverse Shadow DOM if it exists
+                if (node.shadowRoot) {
+                    for (var i = 0; i < node.shadowRoot.childNodes.length; i++) {
+                        var childVal = getRecursiveText(node.shadowRoot.childNodes[i]);
+                        if (childVal) childTexts.push(childVal);
+                    }
+                }
+
+                for (var i = 0; i < node.childNodes.length; i++) {
+                    var childVal = getRecursiveText(node.childNodes[i]);
+                    if (childVal) childTexts.push(childVal);
+                }
+                
+                text = childTexts.join(isBlock ? "\n" : " ");
+                if (isBlock) text = "\n" + text + "\n";
+                return text;
+            }
+        """.trimIndent()
+    }
+
+    private fun waitForSelectorAndContent(webView: WebView, selector: String, onComplete: () -> Unit) {
+        val escapedSelector =
+                selector.replace("\\", "\\\\")
+                        .replace("'", "\\'")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+        val js = """
+            (function() {
+                ${getCommonJsHelpers()}
+                var el = findEl('$escapedSelector');
+                if (el) {
+                    var text = getRecursiveText(el);
+                    if (text.trim().length > 0) return true;
+                }
+                return false;
+            })();
+        """.trimIndent()
+
+        val maxWait = 15000L // 15 seconds max wait for content
+        val pollInterval = 1000L
+        val startTime = System.currentTimeMillis()
+
+        fun poll() {
+            webView.evaluateJavascript(js) { result ->
+                if (result == "true" || (System.currentTimeMillis() - startTime) >= maxWait) {
+                    onComplete()
+                } else {
+                    Handler(Looper.getMainLooper()).postDelayed({ poll() }, pollInterval)
+                }
+            }
+        }
+        poll()
+    }
 
     private fun waitForPageLoadThenNext(
             webView: WebView,
@@ -339,35 +497,6 @@ class WebChecker(
                         .replace("'", "\\'")
                         .replace("\n", "\\n")
                         .replace("\r", "\\r")
-        val findElJs =
-                """
-            function findEl(selStr) {
-                var selectors = [];
-                try {
-                    var parsed = JSON.parse(selStr);
-                    if (Array.isArray(parsed)) selectors = parsed;
-                    else selectors = [selStr];
-                } catch(e) {
-                    selectors = [selStr];
-                }
-                for (var i = 0; i < selectors.length; i++) {
-                    var sel = selectors[i];
-                    try {
-                        if (sel.startsWith("xpath=")) {
-                            var el = document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                            if (el) return el;
-                        } else if (sel.startsWith("text=")) {
-                            var el = document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                            if (el) return el;
-                        } else {
-                            var el = document.querySelector(sel);
-                            if (el) return el;
-                        }
-                    } catch(e) {}
-                }
-                return null;
-            }
-        """.trimIndent()
 
         var js = ""
         var waitTime = 500L
@@ -375,13 +504,32 @@ class WebChecker(
         when (interaction.type) {
             "click" -> {
                 js =
-                        "$findElJs; var el = findEl('$escapedSelector'); if(el) { var opts = { bubbles: true, cancelable: true, view: window, buttons: 1 }; el.dispatchEvent(new PointerEvent('pointerdown', opts)); el.dispatchEvent(new MouseEvent('mousedown', opts)); el.dispatchEvent(new PointerEvent('pointerup', opts)); el.dispatchEvent(new MouseEvent('mouseup', opts)); el.dispatchEvent(new MouseEvent('click', opts)); }"
+                        """
+                        ${getCommonJsHelpers()}
+                        var el = findEl('$escapedSelector'); 
+                        if(el) { 
+                            var opts = { bubbles: true, cancelable: true, view: window, buttons: 1 }; 
+                            el.dispatchEvent(new PointerEvent('pointerdown', opts)); 
+                            el.dispatchEvent(new MouseEvent('mousedown', opts)); 
+                            el.dispatchEvent(new PointerEvent('pointerup', opts)); 
+                            el.dispatchEvent(new MouseEvent('mouseup', opts)); 
+                            el.dispatchEvent(new MouseEvent('click', opts)); 
+                        }
+                        """.trimIndent()
             }
             "input" -> {
                 val escapedValue =
                         interaction.value?.replace("'", "\\'")?.replace("\n", "\\n") ?: ""
                 js =
-                        "$findElJs; var el = findEl('$escapedSelector'); if(el) { el.value = '$escapedValue'; el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true})); }"
+                        """
+                        ${getCommonJsHelpers()}
+                        var el = findEl('$escapedSelector'); 
+                        if(el) { 
+                            el.value = '$escapedValue'; 
+                            el.dispatchEvent(new Event('input', {bubbles: true})); 
+                            el.dispatchEvent(new Event('change', {bubbles: true})); 
+                        }
+                        """.trimIndent()
             }
             "scroll" -> {
                 js = "window.scrollTo({top: ${interaction.value ?: "0"}, behavior: 'smooth'});"
@@ -439,85 +587,11 @@ class WebChecker(
                     return document.documentElement.outerHTML;
                 }
 
-                function findEl(selStr) {
-                    var selectors = [];
-                    try {
-                        var parsed = JSON.parse(selStr);
-                        if (Array.isArray(parsed)) selectors = parsed;
-                        else selectors = [selStr];
-                    } catch(e) {
-                        selectors = [selStr];
-                    }
-                    for (var i = 0; i < selectors.length; i++) {
-                        var sel = selectors[i];
-                        try {
-                            if (sel.startsWith("xpath=")) {
-                                var el = document.evaluate(sel.substring(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                                if (el) return el;
-                            } else if (sel.startsWith("text=")) {
-                                var el = document.evaluate("//*[normalize-space()='" + sel.substring(5).replace(/'/g, "\\'") + "']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                                if (el) return el;
-                            } else {
-                                var el = document.querySelector(sel);
-                                if (el) return el;
-                            }
-                        } catch(e) {}
-                    }
-                    return null;
-                }
+                ${getCommonJsHelpers()}
 
                 var element = findEl('$escapedSelector');
                 if (!element) return '';
                 
-                function getRecursiveText(node) {
-                    if (node.nodeType === 3) { // Node.TEXT_NODE
-                        return (node.nodeValue || "").trim();
-                    }
-                    if (node.nodeType !== 1) return ""; // Node.ELEMENT_NODE
-                    
-                    var tagName = node.tagName.toLowerCase();
-                    // Skip scripts and styles
-                    if (tagName === 'script' || tagName === 'style' || tagName === 'noscript') return "";
-                    
-                    var text = "";
-                    var isBlock = false;
-                    try {
-                        var style = window.getComputedStyle(node);
-                        // Skip hidden elements, but leniently
-                        if (style.display === 'none' || style.visibility === 'hidden') return "";
-                        isBlock = (style.display === 'block' || style.display === 'flex' || style.display === 'grid' || style.display === 'table-row');
-                    } catch (e) {}
-
-                    // Form elements
-                    if (tagName === 'input') {
-                        var type = node.type ? node.type.toLowerCase() : 'text';
-                        if (type !== 'hidden' && type !== 'submit' && type !== 'button' && type !== 'image') {
-                             return node.value || "";
-                        }
-                    }
-                    if (tagName === 'textarea') {
-                        return node.value || "";
-                    }
-                    if (tagName === 'select') {
-                         if (node.selectedIndex >= 0) return node.options[node.selectedIndex].text;
-                         return "";
-                    }
-                    if (tagName === 'br') return "\n";
-                    
-                    // Children
-                    var childTexts = [];
-                    for (var i = 0; i < node.childNodes.length; i++) {
-                        var childVal = getRecursiveText(node.childNodes[i]);
-                        if (childVal) childTexts.push(childVal);
-                    }
-                    
-                    text = childTexts.join(isBlock ? "\n" : " ");
-                    
-                    if (isBlock) text = "\n" + text + "\n";
-                    
-                    return text;
-                }
-
                 // Clean up multiple newlines
                 return getRecursiveText(element).replace(/\n\s*\n/g, '\n').trim();
             })();
@@ -790,8 +864,9 @@ class WebChecker(
         val builder =
                 androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
                         .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                        .setContentTitle("Monitor")
+                        .setContentTitle(title)
                         .setContentText(notificationText)
+                        .setSubText(message)
                         .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
                         .setContentIntent(pendingIntent)
                         .setAutoCancel(true)
