@@ -47,7 +47,8 @@ WebPursuer is a native Android application designed to monitor websites for chan
 *   **Jetpack Compose**: Primary UI framework. ViewModels are injected into Composable screens.
 *   **Database**: Room is used for persistence. Changes to models require Room migrations if already deployed.
 *   **Package Name**: `com.murmli.webpursuer` (Note: the physical directory structure currently uses `com/example/webpursuer/` in `app/src/main/java`, but the code uses the correct package declaration).
-*   **Macros**: User interactions are recorded as JSON-based `Interaction` objects and replayed in a headless WebView.
+* **Commits**: Führe nach jeder Änderung (Feature, Fix, Refactoring) einen Git-Commit durch.
+* **Macros**: User interactions are recorded as JSON-based `Interaction` objects and replayed in a headless WebView.
 
 ## AI Integration
 *   The project uses OpenRouter to access various LLMs.
