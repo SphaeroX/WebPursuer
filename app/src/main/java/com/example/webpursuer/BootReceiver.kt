@@ -27,6 +27,8 @@ class BootReceiver : BroadcastReceiver() {
             
             Log.d("BootReceiver", "System boot completed - restoring all workers")
             
+            MonitoringService.startService(context)
+            
             // Note: WebPursuerApp.onCreate also runs when the process starts,
             // but BootReceiver ensures it's triggered explicitly after boot.
             // We use the same logic here for safety.

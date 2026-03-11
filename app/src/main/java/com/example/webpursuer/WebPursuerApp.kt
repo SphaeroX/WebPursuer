@@ -24,6 +24,7 @@ class WebPursuerApp : Application() {
         super.onCreate()
         createNotificationChannel()
         
+        MonitoringService.startService(this)
         restoreAllWorkers()
     }
     

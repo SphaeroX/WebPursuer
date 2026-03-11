@@ -268,18 +268,43 @@ fun SettingsScreen(onBackClick: () -> Unit, onLogsClick: () -> Unit) {
                                                         containerColor =
                                                                 MaterialTheme.colorScheme.tertiary
                                                 )
-                                ) { Text("Disable Battery Optimization (Fix Background Issues)") }
-                                Spacer(modifier = Modifier.height(16.dp))
+                                ) { Text("Akku-Optimierung deaktivieren") }
+                                Spacer(modifier = Modifier.height(8.dp))
                         } else if (android.os.Build.VERSION.SDK_INT >=
                                         android.os.Build.VERSION_CODES.M
                         ) {
                                 Text(
-                                        text = "Battery Optimization: Disabled (Good)",
+                                        text = "Akku-Optimierung: Deaktiviert (Optimal)",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.primary
                                 )
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                         }
+
+                        Button(
+                                onClick = {
+                                        val intent = android.content.Intent(
+                                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                        ).apply {
+                                                data = android.net.Uri.parse("package:${context.packageName}")
+                                        }
+                                        context.startActivity(intent)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                        ) {
+                                Text("App-Info öffnen (Hintergrundaktivität prüfen)")
+                        }
+
+                        Text(
+                                text = "Hinweis für Samsung-Nutzer: Bitte stelle in der App-Info unter 'Akku' die Option auf 'Nicht eingeschränkt'.",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
                                 onClick = onLogsClick,
@@ -288,8 +313,7 @@ fun SettingsScreen(onBackClick: () -> Unit, onLogsClick: () -> Unit) {
                                         ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.secondary
                                         )
-                        ) { Text("View System Logs") }
-
+                        ) { Text("System-Logs anzeigen") }
                         Spacer(modifier = Modifier.height(24.dp))
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(24.dp))
