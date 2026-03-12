@@ -25,7 +25,16 @@ class MonitoringService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("MonitoringService", "Service starting")
         val notification = createNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID, 
+                notification, 
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
         
         return START_STICKY
     }
@@ -38,12 +47,12 @@ class MonitoringService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("WebPursuer Aktiv")
-            .setContentText("Überwachung läuft im Hintergrund...")
-            .setSmallIcon(R.drawable.app_logo) // Hier sollte ein passendes Icon sein, app_logo ist vorhanden
+            .setContentTitle("WebPursuer Active")
+            .setContentText("Monitoring in progress...")
+            .setSmallIcon(R.drawable.app_logo)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW) // Weniger störend
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
 
@@ -51,10 +60,10 @@ class MonitoringService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Hintergrund-Überwachung",
+                "Background Monitoring",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Hält die App für die Überwachung im Hintergrund aktiv"
+                description = "Keeps the app active for background monitoring"
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
