@@ -52,16 +52,19 @@ class WebChecker(
                 android.util.Log.e("WebChecker", errorMsg)
                 logRepository.logError("MONITOR", errorMsg)
 
-                checkLogDao.insert(
-                        CheckLog(
-                                monitorId = monitor.id,
-                                timestamp = now,
-                                result = "FAILURE",
-                                message = errorMsg,
-                                content = null,
-                                rawContent = null
+                val logId =
+                        checkLogDao.insert(
+                                CheckLog(
+                                        monitorId = monitor.id,
+                                        timestamp = now,
+                                        result = "FAILURE",
+                                        message = errorMsg,
+                                        content = null,
+                                        rawContent = null
+                                )
                         )
-                )
+
+                sendNotification(monitor.id, logId.toInt(), "Monitor Failure", errorMsg)
                 return
             }
 
