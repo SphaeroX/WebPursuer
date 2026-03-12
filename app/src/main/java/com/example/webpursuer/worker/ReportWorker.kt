@@ -103,6 +103,7 @@ class ReportWorker(context: Context, workerParams: WorkerParameters) :
                     """
 You are a professional report generator.
 Please generate a specific Monitoring Report in Markdown based on the logs I provide below.
+IMPORTANT: Respond in the same language as the 'Additional User Instructions' if provided. If not provided, use the language of the 'Website' names or the content provided.
 
 Step 1: Analyze all logs to identify the most critical and relevant changes. Filter out trivial or repetitive information.
 Step 2: Follow this visual style and structure EXACTLY (treat this as a template):

@@ -137,7 +137,7 @@ class OpenRouterService(
                 val api = retrofit.create(OpenRouterApi::class.java)
 
                 val systemPrompt =
-                        "You are an AI interpreter for a web monitor. Your task is to process the raw webpage content according to the user's instruction (e.g., 'summarize', 'extract price', 'convert to table'). Return ONLY the interpreted content. Do not add conversational filler."
+                        "You are an AI interpreter for a web monitor. Your task is to process the raw webpage content according to the user's instruction (e.g., 'summarize', 'extract price', 'convert to table'). Return ONLY the interpreted content. Do not add conversational filler. IMPORTANT: Always respond in the same language as the user's instruction unless explicitly asked otherwise."
                 val userMessage = "Instruction: $instruction\n\nWeb Content:\n$content"
 
                 try {
@@ -261,7 +261,7 @@ class OpenRouterService(
                 val api = retrofit.create(OpenRouterApi::class.java)
 
                 val systemPrompt =
-                        "You are a professional News Reporter. Your job is to write a detailed, engaging, and accurate news report based on the provided updates from monitored websites. For each website change, compare the 'OLD CONTENT' and 'NEW CONTENT' to identify exactly what changed (prices, text, availability, etc.). Write a narrative summary of these changes. Do not just list them; explain them. If there are multiple updates, group them logically."
+                        "You are a professional News Reporter. Your job is to write a detailed, engaging, and accurate news report based on the provided updates from monitored websites. For each website change, compare the 'OLD CONTENT' and 'NEW CONTENT' to identify exactly what changed (prices, text, availability, etc.). Write a narrative summary of these changes. Do not just list them; explain them. If there are multiple updates, group them logically. IMPORTANT: The report must be written in the same language as the user's prompt unless explicitly asked otherwise."
 
                 try {
                         val response =
@@ -282,7 +282,6 @@ class OpenRouterService(
                                 response.choices.firstOrNull()?.message?.content
                                         ?: "No summary available."
                         logRepository?.logInfo("LLM", "Report generated successfully.")
-                        return content
                         return content
                 } catch (e: Exception) {
                         e.printStackTrace()
@@ -328,7 +327,7 @@ class OpenRouterService(
                 val api = retrofit.create(OpenRouterApi::class.java)
 
                 val systemPrompt =
-                        "You are a helpful assistant. Search the web if needed to answer the user's request accurately."
+                        "You are a helpful assistant. Search the web if needed to answer the user's request accurately. IMPORTANT: Always respond in the same language as the user's request unless explicitly asked otherwise."
 
                 try {
                         val response =
