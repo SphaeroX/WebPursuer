@@ -128,7 +128,7 @@ fun DiffScreen(
     if (showVersionSelectionDialog && logs.isNotEmpty()) {
         androidx.compose.material3.AlertDialog(
                 onDismissRequest = { showVersionSelectionDialog = false },
-                title = { Text("Version auswählen") },
+                title = { Text("Select Version") },
                 text = {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                         items(logs.size) { index ->
@@ -176,7 +176,7 @@ fun DiffScreen(
                 confirmButton = {
                     androidx.compose.material3.TextButton(
                             onClick = { showVersionSelectionDialog = false }
-                    ) { Text("Abbrechen") }
+                    ) { Text("Cancel") }
                 }
         )
     }
@@ -184,7 +184,7 @@ fun DiffScreen(
     Scaffold(
             topBar = {
                 TopAppBar(
-                        title = { Column { Text("Änderungen") } },
+                        title = { Column { Text("Changes") } },
                         navigationIcon = {
                             IconButton(onClick = onBackClick) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -215,7 +215,7 @@ fun DiffScreen(
                                     onDismissRequest = { showFilterMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                        text = { Text("Version auswählen...") },
+                                        text = { Text("Select Version...") },
                                         onClick = {
                                             showVersionSelectionDialog = true
                                             showFilterMenu = false
@@ -227,10 +227,11 @@ fun DiffScreen(
                                 androidx.compose.material3.HorizontalDivider()
                                 
                                 val filterModes = listOf(
-                                    "ALL" to "Alle anzeigen",
-                                    "NEW" to "Nur Neue (Grün)",
-                                    "REMOVED" to "Nur Entfernte (Rot)",
-                                    "UNCHANGED" to "Nur Unveränderte"
+                                    "CHANGES" to "All Changes",
+                                    "ALL" to "Full Content",
+                                    "NEW" to "New (Green)",
+                                    "REMOVED" to "Removed (Red)",
+                                    "UNCHANGED" to "Unchanged"
                                 )
                                 
                                 filterModes.forEach { (mode, label) ->
@@ -307,11 +308,11 @@ fun DiffScreen(
         ) {
             if (logs.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Lade Historie...", color = Color.White)
+                    Text("Loading history...", color = Color.White)
                 }
             } else if (currentLog == null) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Logs nicht gefunden.", color = Color.White)
+                    Text("Logs not found.", color = Color.White)
                 }
             } else {
                 // Version Header / Navigation Controls
@@ -330,7 +331,7 @@ fun DiffScreen(
                                             containerColor = Color.Transparent,
                                             contentColor = Color(0xFFE57373)
                                     )
-                    ) { Text("< Älter") }
+                    ) { Text("< Older") }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         // Date Display
@@ -351,7 +352,7 @@ fun DiffScreen(
                                             containerColor = Color.Transparent,
                                             contentColor = Color(0xFF81C784)
                                     )
-                    ) { Text("Neuer >") }
+                    ) { Text("Newer >") }
                 }
 
                 if (!showRendered) {
@@ -365,7 +366,7 @@ fun DiffScreen(
                                     androidx.compose.foundation.layout.Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Vergleich mit:", color = Color.Gray, fontSize = 12.sp)
+                            Text("Compare with:", color = Color.Gray, fontSize = 12.sp)
                             previousLog?.let {
                                 Text(
                                         SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault())
@@ -375,7 +376,7 @@ fun DiffScreen(
                                 )
                             }
                                     ?: Text(
-                                            "Nichts (Initial)",
+                                            "None (Initial)",
                                             color = Color.Gray,
                                             fontSize = 12.sp
                                     )
@@ -429,6 +430,7 @@ fun DiffScreen(
 
                     val filteredLines =
                             when (diffFilterMode) {
+                                "CHANGES" -> allDiffLines.filter { it.color != Color.White }
                                 "NEW" -> allDiffLines.filter { it.color == Color(0xFF69F0AE) }
                                 "REMOVED" -> allDiffLines.filter { it.color == Color(0xFFFF5252) }
                                 "UNCHANGED" -> allDiffLines.filter { it.color == Color.White }

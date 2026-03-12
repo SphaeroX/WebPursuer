@@ -52,10 +52,10 @@ fun RecentChangesScreen(
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
-            title = { Text("Einstellungen Timeline") },
+            title = { Text("Timeline Settings") },
             text = {
                 Column {
-                    Text("Logs pro Seite:", fontWeight = FontWeight.Bold)
+                    Text("Logs per page:", fontWeight = FontWeight.Bold)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Slider(
                             value = pageSize.toFloat(),
@@ -69,13 +69,13 @@ fun RecentChangesScreen(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    Text("Sortierung:", fontWeight = FontWeight.Bold)
+                    Text("Sorting:", fontWeight = FontWeight.Bold)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = sortOrder == "DESC",
                             onClick = { viewModel.setRecentChangesSortOrder("DESC") }
                         )
-                        Text("Neuste zuerst", modifier = Modifier.clickable { viewModel.setRecentChangesSortOrder("DESC") })
+                        Text("Newest first", modifier = Modifier.clickable { viewModel.setRecentChangesSortOrder("DESC") })
                         
                         Spacer(modifier = Modifier.width(16.dp))
                         
@@ -83,7 +83,7 @@ fun RecentChangesScreen(
                             selected = sortOrder == "ASC",
                             onClick = { viewModel.setRecentChangesSortOrder("ASC") }
                         )
-                        Text("Älteste zuerst", modifier = Modifier.clickable { viewModel.setRecentChangesSortOrder("ASC") })
+                        Text("Oldest first", modifier = Modifier.clickable { viewModel.setRecentChangesSortOrder("ASC") })
                     }
                 }
             },
@@ -101,12 +101,12 @@ fun RecentChangesScreen(
                 title = { Text("Recent Changes Timeline") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Einstellungen")
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -126,7 +126,7 @@ fun RecentChangesScreen(
                 }
             } else if (logs.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Keine Änderungen gefunden.", color = Color.White)
+                    Text("No changes found.", color = Color.White)
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -143,22 +143,22 @@ fun RecentChangesScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Arrangement.CenterVertically
                     ) {
                         IconButton(
                             onClick = { if (currentPage > 0) currentPage-- },
                             enabled = currentPage > 0
                         ) {
-                            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Vorherige", tint = if (currentPage > 0) Color.White else Color.Gray)
+                            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous", tint = if (currentPage > 0) Color.White else Color.Gray)
                         }
                         
-                        Text("Seite ${currentPage + 1} von $totalPages", color = Color.White, modifier = Modifier.padding(horizontal = 16.dp))
+                        Text("Page ${currentPage + 1} of $totalPages", color = Color.White, modifier = Modifier.padding(horizontal = 16.dp))
                         
                         IconButton(
                             onClick = { if (currentPage < totalPages - 1) currentPage++ },
                             enabled = currentPage < totalPages - 1
                         ) {
-                            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Nächste", tint = if (currentPage < totalPages - 1) Color.White else Color.Gray)
+                            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next", tint = if (currentPage < totalPages - 1) Color.White else Color.Gray)
                         }
                     }
                 }
@@ -179,7 +179,7 @@ fun RecentChangeItem(log: CheckLog, monitor: Monitor?, onClick: (Int, Int) -> Un
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = monitor?.name ?: "Unbekannter Monitor",
+                text = monitor?.name ?: "Unknown Monitor",
                 color = Color(0xFF64B5F6),
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
@@ -202,7 +202,7 @@ fun RecentChangeItem(log: CheckLog, monitor: Monitor?, onClick: (Int, Int) -> Un
         
         if (log.changePercentage != null) {
             Text(
-                text = "Änderung: ${String.format("%.1f", log.changePercentage)}%",
+                text = "Change: ${String.format("%.1f", log.changePercentage)}%",
                 color = if (log.changePercentage!! > 0) Color(0xFF81C784) else Color.White,
                 fontSize = 12.sp
             )

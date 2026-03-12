@@ -85,7 +85,7 @@ class SettingsRepository(private val context: Context) {
             }
 
     val diffFilterMode: Flow<String> =
-            context.dataStore.data.map { preferences -> preferences[DIFF_FILTER_MODE] ?: "ALL" }
+            context.dataStore.data.map { preferences -> preferences[DIFF_FILTER_MODE] ?: "CHANGES" }
 
     val diffViewMode: Flow<String> =
             context.dataStore.data.map { preferences -> preferences[DIFF_VIEW_MODE] ?: "DIFF" }
