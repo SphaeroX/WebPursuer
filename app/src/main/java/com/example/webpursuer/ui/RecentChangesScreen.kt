@@ -143,7 +143,7 @@ fun RecentChangesScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Arrangement.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
                             onClick = { if (currentPage > 0) currentPage-- },
