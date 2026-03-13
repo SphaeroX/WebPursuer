@@ -147,50 +147,42 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
 
             val grouped = filteredLogs.groupBy { it.monitorId }
 
-            for ((monitorId, montiorLogs) in grouped) {
+            for ((monitorId, monitorLogs) in grouped) {
                 val monitor = monitorDao.getById(monitorId)
                 if (monitor != null) {
                     sb.append("Website: ${monitor.name} (${monitor.url})\n")
-
-                    // Only process the latest log for this monitor to avoid text flooding
-                    val latestLog = montiorLogs.maxByOrNull { it.timestamp }
-                    if (latestLog != null) {
-                        val log = latestLog
-                        sb.append(
-                                "- Latest change at ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(log.timestamp))}: ${log.message}\n"
-                        )
-
-                        // Fetch previous state for context (from before the first change in this period)
-                        val oldestLog = montiorLogs.minByOrNull { it.timestamp }
-                        val previousLog = oldestLog?.let { checkLogDao.getPreviousLog(monitorId, it.timestamp) } ?: checkLogDao.getPreviousLog(monitorId, log.timestamp)
-
+                    
+                    // Sort logs by timestamp to show chronological order
+                    val sortedLogs = monitorLogs.sortedBy { it.timestamp }
+                    
+                    for (log in sortedLogs) {
+                        val timeStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(log.timestamp))
+                        sb.append("### Change at $timeStr\n")
+                        sb.append("- Result: ${log.result}\n")
+                        sb.append("- Message: ${log.message}\n")
+                        
                         if (log.result == "CHANGED") {
-                            sb.append("  [CHANGE DETECTED]\n")
+                            // Fetch previous state specifically for this change to provide accurate diff context
+                            val previousLog = checkLogDao.getPreviousLog(monitorId, log.timestamp)
+
                             if (previousLog?.content != null) {
-                                sb.append("  --- OLD CONTENT (Before this reporting period) ---\n")
+                                sb.append("  --- CONTENT BEFORE THIS CHANGE ---\n")
                                 sb.append(previousLog.content)
                                 sb.append("\n  -------------------\n")
-                            } else {
-                                sb.append("  (No previous content available for comparison)\n")
                             }
-
+                            
                             if (log.content != null) {
-                                sb.append("  --- NEW CONTENT (Latest state) ---\n")
+                                sb.append("  --- CONTENT AFTER THIS CHANGE ---\n")
                                 sb.append(log.content)
                                 sb.append("\n  -------------------\n")
                             }
                         } else if (!log.content.isNullOrBlank()) {
-                            // For non-change logs (e.g. failure or check), maybe just show a
-                            // snippet?
-                            // Or generally we only really care about CHANGES for the report if
-                            // configured that way.
-                            // But keeping logical consistency:
-                            sb.append("  Current Content:\n")
+                            sb.append("  Content:\n")
                             sb.append(log.content)
                             sb.append("\n")
                         }
+                        sb.append("\n")
                     }
-                    sb.append("\n")
                 }
             }
 
