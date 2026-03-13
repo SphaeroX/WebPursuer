@@ -9,8 +9,10 @@ import com.murmli.webpursuer.data.Interaction
 import com.murmli.webpursuer.data.Monitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -139,6 +141,34 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     val recentChangesSortOrder: Flow<String> = settingsRepository.recentChangesSortOrder
     val apiKey: Flow<String?> = settingsRepository.apiKey
 
+    private val _onlyOverThreshold = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val onlyOverThreshold = _onlyOverThreshold.asStateFlow()
+
+    private val _minChange = kotlinx.coroutines.flow.MutableStateFlow<Double?>(null)
+    val minChange = _minChange.asStateFlow()
+
+    private val _startDate = kotlinx.coroutines.flow.MutableStateFlow<Long?>(null)
+    val startDate = _startDate.asStateFlow()
+
+    private val _endDate = kotlinx.coroutines.flow.MutableStateFlow<Long?>(null)
+    val endDate = _endDate.asStateFlow()
+
+    fun setOnlyOverThreshold(only: Boolean) {
+        _onlyOverThreshold.value = only
+    }
+
+    fun setMinChange(value: Double?) {
+        _minChange.value = value
+    }
+
+    fun setStartDate(timestamp: Long?) {
+        _startDate.value = timestamp
+    }
+
+    fun setEndDate(timestamp: Long?) {
+        _endDate.value = timestamp
+    }
+
     fun setDiffFilterMode(mode: String) {
         viewModelScope.launch { settingsRepository.saveDiffFilterMode(mode) }
     }
@@ -156,14 +186,23 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
     }
 
     suspend fun getRecentChangesPaged(limit: Int, offset: Int, sortOrder: String): List<CheckLog> {
-        return if (sortOrder == "ASC") {
-            checkLogDao.getRecentChangesPagedAsc(limit, offset)
-        } else {
-            checkLogDao.getRecentChangesPaged(limit, offset)
-        }
+        return checkLogDao.getRecentChangesFiltered(
+            limit, 
+            offset, 
+            sortOrder,
+            if (_onlyOverThreshold.value) 1 else 0,
+            _minChange.value,
+            _startDate.value,
+            _endDate.value
+        )
     }
 
     suspend fun getTotalChangedCount(): Int {
-        return checkLogDao.getTotalChangedCount()
+        return checkLogDao.getTotalChangedCountFiltered(
+            if (_onlyOverThreshold.value) 1 else 0,
+            _minChange.value,
+            _startDate.value,
+            _endDate.value
+        )
     }
 }

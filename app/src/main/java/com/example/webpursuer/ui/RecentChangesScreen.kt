@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
@@ -15,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.murmli.webpursuer.data.CheckLog
@@ -32,6 +35,11 @@ fun RecentChangesScreen(
     val pageSize by viewModel.recentChangesPageSize.collectAsState(initial = 10)
     val sortOrder by viewModel.recentChangesSortOrder.collectAsState(initial = "DESC")
     
+    val onlyOverThreshold by viewModel.onlyOverThreshold.collectAsState()
+    val minChange by viewModel.minChange.collectAsState()
+    val startDate by viewModel.startDate.collectAsState()
+    val endDate by viewModel.endDate.collectAsState()
+
     var currentPage by remember { mutableIntStateOf(0) }
     var logs by remember { mutableStateOf<List<CheckLog>>(emptyList()) }
     var totalCount by remember { mutableIntStateOf(0) }
@@ -40,13 +48,19 @@ fun RecentChangesScreen(
     val monitors by viewModel.monitors.collectAsState()
     
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showFilterBar by remember { mutableStateOf(false) }
 
-    // Load data when page, size or sort order changes
-    LaunchedEffect(currentPage, pageSize, sortOrder) {
+    // Load data when page, size, sort order or filters change
+    LaunchedEffect(currentPage, pageSize, sortOrder, onlyOverThreshold, minChange, startDate, endDate) {
         isLoading = true
         totalCount = viewModel.getTotalChangedCount()
         logs = viewModel.getRecentChangesPaged(pageSize, currentPage * pageSize, sortOrder)
         isLoading = false
+    }
+
+    // Reset to page 0 when filters change
+    LaunchedEffect(onlyOverThreshold, minChange, startDate, endDate) {
+        currentPage = 0
     }
 
     if (showSettingsDialog) {
@@ -105,6 +119,13 @@ fun RecentChangesScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showFilterBar = !showFilterBar }) {
+                        Icon(
+                            Icons.Default.FilterList, 
+                            contentDescription = "Filters",
+                            tint = if (onlyOverThreshold || minChange != null || startDate != null || endDate != null) Color(0xFF64B5F6) else Color.White
+                        )
+                    }
                     IconButton(onClick = { showSettingsDialog = true }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
@@ -120,13 +141,32 @@ fun RecentChangesScreen(
         containerColor = Color.Black
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+            if (showFilterBar) {
+                FilterSection(
+                    onlyOverThreshold = onlyOverThreshold,
+                    onOnlyOverThresholdChange = { viewModel.setOnlyOverThreshold(it) },
+                    minChange = minChange,
+                    onMinChangeChange = { viewModel.setMinChange(it) },
+                    startDate = startDate,
+                    onStartDateChange = { viewModel.setStartDate(it) },
+                    endDate = endDate,
+                    onEndDateChange = { viewModel.setEndDate(it) },
+                    onClearFilters = {
+                        viewModel.setOnlyOverThreshold(false)
+                        viewModel.setMinChange(null)
+                        viewModel.setStartDate(null)
+                        viewModel.setEndDate(null)
+                    }
+                )
+            }
+
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color.White)
                 }
             } else if (logs.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No changes found.", color = Color.White)
+                    Text("No changes found matching the filters.", color = Color.White)
                 }
             } else {
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -167,6 +207,160 @@ fun RecentChangesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FilterSection(
+    onlyOverThreshold: Boolean,
+    onOnlyOverThresholdChange: (Boolean) -> Unit,
+    minChange: Double?,
+    onMinChangeChange: (Double?) -> Unit,
+    startDate: Long?,
+    onStartDateChange: (Long?) -> Unit,
+    endDate: Long?,
+    onEndDateChange: (Long?) -> Unit,
+    onClearFilters: () -> Unit
+) {
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+
+    val dateFormatter = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked = onlyOverThreshold,
+                onCheckedChange = onOnlyOverThresholdChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Color(0xFF64B5F6),
+                    uncheckedColor = Color.Gray,
+                    checkmarkColor = Color.Black
+                )
+            )
+            Text("Nur über Threshold", color = Color.White, modifier = Modifier.clickable { onOnlyOverThresholdChange(!onlyOverThreshold) })
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            TextButton(onClick = onClearFilters) {
+                Text("Clear", color = Color(0xFFE57373))
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Min Change %: ", color = Color.White)
+            OutlinedTextField(
+                value = minChange?.toString() ?: "",
+                onValueChange = { 
+                    val value = it.toDoubleOrNull()
+                    if (it.isEmpty()) onMinChangeChange(null)
+                    else if (value != null) onMinChangeChange(value)
+                },
+                modifier = Modifier.width(100.dp),
+                textStyle = LocalTextStyle.current.copy(color = Color.White),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = Color.Gray,
+                    focusedBorderColor = Color(0xFF64B5F6)
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Datum von: ", color = Color.White)
+            Button(
+                onClick = { showStartDatePicker = true },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+            ) {
+                Text(if (startDate != null) dateFormatter.format(Date(startDate)) else "Wählen", color = Color.White)
+            }
+            if (startDate != null) {
+                IconButton(onClick = { onStartDateChange(null) }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear start date", tint = Color.Gray)
+                }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Datum bis: ", color = Color.White)
+            Button(
+                onClick = { showEndDatePicker = true },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+            ) {
+                Text(if (endDate != null) dateFormatter.format(Date(endDate)) else "Wählen", color = Color.White)
+            }
+            if (endDate != null) {
+                IconButton(onClick = { onEndDateChange(null) }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear end date", tint = Color.Gray)
+                }
+            }
+        }
+    }
+
+    if (showStartDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = startDate ?: System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { showStartDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onStartDateChange(datePickerState.selectedDateMillis)
+                    showStartDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showEndDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = endDate ?: System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { showEndDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Set to end of day
+                    val millis = datePickerState.selectedDateMillis
+                    if (millis != null) {
+                        val cal = Calendar.getInstance()
+                        cal.timeInMillis = millis
+                        cal.set(Calendar.HOUR_OF_DAY, 23)
+                        cal.set(Calendar.MINUTE, 59)
+                        cal.set(Calendar.SECOND, 59)
+                        cal.set(Calendar.MILLISECOND, 999)
+                        onEndDateChange(cal.timeInMillis)
+                    }
+                    showEndDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
 @Composable
 fun RecentChangeItem(log: CheckLog, monitor: Monitor?, onClick: (Int, Int) -> Unit) {
     val dateStr = SimpleDateFormat("dd.MM.yy, HH:mm:ss", Locale.getDefault()).format(Date(log.timestamp))
@@ -203,7 +397,7 @@ fun RecentChangeItem(log: CheckLog, monitor: Monitor?, onClick: (Int, Int) -> Un
         if (log.changePercentage != null) {
             Text(
                 text = "Change: ${String.format("%.1f", log.changePercentage)}%",
-                color = if (log.changePercentage!! > 0) Color(0xFF81C784) else Color.White,
+                color = if (log.changePercentage > 0) Color(0xFF81C784) else Color.White,
                 fontSize = 12.sp
             )
         }

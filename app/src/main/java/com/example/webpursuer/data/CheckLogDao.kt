@@ -43,4 +43,49 @@ interface CheckLogDao {
 
         @Query("SELECT COUNT(*) FROM check_logs WHERE result = 'CHANGED'")
         suspend fun getTotalChangedCount(): Int
+
+        @Query("""
+            SELECT cl.* FROM check_logs cl
+            JOIN monitors m ON cl.monitorId = m.id
+            WHERE cl.result = 'CHANGED'
+            AND (:onlyOverThreshold = 0 OR (
+                (m.thresholdType = 'PERCENTAGE' AND cl.changePercentage >= m.thresholdValue) OR
+                (m.thresholdType = 'CHARACTER_COUNT' AND cl.changePercentage >= 0) -- Character count is harder without the actual diff, but we can't do much here without schema change
+            ))
+            AND (:minChange IS NULL OR cl.changePercentage >= :minChange)
+            AND (:startDate IS NULL OR cl.timestamp >= :startDate)
+            AND (:endDate IS NULL OR cl.timestamp <= :endDate)
+            ORDER BY 
+                CASE WHEN :sortOrder = 'ASC' THEN cl.timestamp END ASC,
+                CASE WHEN :sortOrder = 'DESC' THEN cl.timestamp END DESC
+            LIMIT :limit OFFSET :offset
+        """)
+        suspend fun getRecentChangesFiltered(
+            limit: Int, 
+            offset: Int, 
+            sortOrder: String,
+            onlyOverThreshold: Int, // 1 for true, 0 for false
+            minChange: Double?,
+            startDate: Long?,
+            endDate: Long?
+        ): List<CheckLog>
+
+        @Query("""
+            SELECT COUNT(cl.id) FROM check_logs cl
+            JOIN monitors m ON cl.monitorId = m.id
+            WHERE cl.result = 'CHANGED'
+            AND (:onlyOverThreshold = 0 OR (
+                (m.thresholdType = 'PERCENTAGE' AND cl.changePercentage >= m.thresholdValue) OR
+                (m.thresholdType = 'CHARACTER_COUNT' AND cl.changePercentage >= 0)
+            ))
+            AND (:minChange IS NULL OR cl.changePercentage >= :minChange)
+            AND (:startDate IS NULL OR cl.timestamp >= :startDate)
+            AND (:endDate IS NULL OR cl.timestamp <= :endDate)
+        """)
+        suspend fun getTotalChangedCountFiltered(
+            onlyOverThreshold: Int,
+            minChange: Double?,
+            startDate: Long?,
+            endDate: Long?
+        ): Int
 }
