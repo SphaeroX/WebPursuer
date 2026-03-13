@@ -243,7 +243,7 @@ fun FilterSection(
                     checkmarkColor = Color.Black
                 )
             )
-            Text("Nur über Threshold", color = Color.White, modifier = Modifier.clickable { onOnlyOverThresholdChange(!onlyOverThreshold) })
+            Text("Only over threshold", color = Color.White, modifier = Modifier.clickable { onOnlyOverThresholdChange(!onlyOverThreshold) })
             
             Spacer(modifier = Modifier.weight(1f))
             
@@ -281,12 +281,12 @@ fun FilterSection(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Datum von: ", color = Color.White)
+            Text("Date from: ", color = Color.White)
             Button(
                 onClick = { showStartDatePicker = true },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
             ) {
-                Text(if (startDate != null) dateFormatter.format(Date(startDate)) else "Wählen", color = Color.White)
+                Text(if (startDate != null) dateFormatter.format(Date(startDate)) else "Select", color = Color.White)
             }
             if (startDate != null) {
                 IconButton(onClick = { onStartDateChange(null) }) {
@@ -299,12 +299,12 @@ fun FilterSection(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Datum bis: ", color = Color.White)
+            Text("Date to: ", color = Color.White)
             Button(
                 onClick = { showEndDatePicker = true },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
             ) {
-                Text(if (endDate != null) dateFormatter.format(Date(endDate)) else "Wählen", color = Color.White)
+                Text(if (endDate != null) dateFormatter.format(Date(endDate)) else "Select", color = Color.White)
             }
             if (endDate != null) {
                 IconButton(onClick = { onEndDateChange(null) }) {
