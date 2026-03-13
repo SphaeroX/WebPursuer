@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -100,6 +101,16 @@ fun ReportEditScreen(
                                                         Icons.AutoMirrored.Filled.ArrowBack,
                                                         contentDescription = "Back"
                                                 )
+                                        }
+                                },
+                                actions = {
+                                        if (report != null) {
+                                                IconButton(onClick = { reportViewModel.generateReportNow(report) }) {
+                                                        Icon(
+                                                                Icons.Default.PlayArrow,
+                                                                contentDescription = "Run Now"
+                                                        )
+                                                }
                                         }
                                 }
                         )

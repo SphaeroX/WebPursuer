@@ -83,4 +83,13 @@ class ReportViewModel(application: Application) : AndroidViewModel(application) 
     fun deleteReport(report: Report) {
         viewModelScope.launch { repository.deleteReport(report) }
     }
+
+    fun generateReportNow(report: Report) {
+        val workManager = androidx.work.WorkManager.getInstance(getApplication())
+        val workRequest =
+                androidx.work.OneTimeWorkRequestBuilder<com.murmli.webpursuer.worker.ReportWorker>()
+                        .setInputData(androidx.work.workDataOf("report_id" to report.id))
+                        .build()
+        workManager.enqueue(workRequest)
+    }
 }

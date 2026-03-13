@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +55,7 @@ fun ReportList(
                         report = report,
                         onEditClick = { onEditClick(report) },
                         onHistoryClick = { onHistoryClick(report) },
+                        onRunClick = { viewModel.generateReportNow(report) },
                         onDeleteClick = { viewModel.deleteReport(report) },
                         onToggle = { enabled -> viewModel.toggleReport(report, enabled) }
                 )
@@ -68,6 +70,7 @@ fun ReportItem(
         report: Report,
         onEditClick: () -> Unit,
         onHistoryClick: () -> Unit,
+        onRunClick: () -> Unit,
         onDeleteClick: () -> Unit,
         onToggle: (Boolean) -> Unit
 ) {
@@ -106,6 +109,9 @@ fun ReportItem(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(checked = report.enabled, onCheckedChange = onToggle)
+                IconButton(onClick = onRunClick) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Run Now")
+                }
                 IconButton(onClick = onHistoryClick) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History")
                 }
