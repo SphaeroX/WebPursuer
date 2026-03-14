@@ -164,21 +164,18 @@ Step 2: Follow this visual style and structure EXACTLY (treat this as a template
                         if (log.result == "CHANGED") {
                             // Fetch previous state specifically for this change to provide accurate diff context
                             val previousLog = checkLogDao.getPreviousLog(monitorId, log.timestamp)
-
-                            if (previousLog?.content != null) {
-                                sb.append("  --- CONTENT BEFORE THIS CHANGE ---\n")
-                                sb.append(previousLog.content)
-                                sb.append("\n  -------------------\n")
-                            }
                             
-                            if (log.content != null) {
-                                sb.append("  --- CONTENT AFTER THIS CHANGE ---\n")
-                                sb.append(log.content)
-                                sb.append("\n  -------------------\n")
-                            }
+                            // Use DiffUtils to get only the changed parts with context
+                            val diff = com.example.webpursuer.util.DiffUtils.getDiff(
+                                previousLog?.content, 
+                                log.content
+                            )
+                            sb.append("  --- CHANGES DETECTED ---\n")
+                            sb.append(diff)
+                            sb.append("\n  -------------------\n")
                         } else if (!log.content.isNullOrBlank()) {
-                            sb.append("  Content:\n")
-                            sb.append(log.content)
+                            sb.append("  Content Summary:\n")
+                            sb.append(com.example.webpursuer.util.DiffUtils.truncate(log.content ?: ""))
                             sb.append("\n")
                         }
                         sb.append("\n")

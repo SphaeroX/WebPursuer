@@ -158,10 +158,12 @@ class WebChecker(
                 }
 
                 if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
+                    // Truncate content to avoid token limits (e.g., 8000 chars)
+                    val truncatedContent = com.example.webpursuer.util.DiffUtils.truncate(content)
                     val llmResult =
                             openRouterService.checkContent(
                                     monitor.llmPrompt,
-                                    content,
+                                    truncatedContent,
                                     monitor.useWebSearch
                             )
                     if (llmResult) {
