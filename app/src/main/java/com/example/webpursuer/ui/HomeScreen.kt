@@ -112,22 +112,32 @@ fun HomeScreen(
                 selectedMonitor != null
     }
 
-    // Handle back button - always return to main screen
+    // Handle back button - hierarchical navigation
     BackHandler(enabled = isOnSubScreen()) {
-        // Reset all navigation states to return to main screen
-        diffLogId = null
-        diffMonitorId = null
-        showLogs = false
-        showTimeline = false
-        showSettings = false
-        showReportContent = null
-        showReportHistory = null
-        showReportEdit = false
-        selectedReportForEdit = null
-        showSearchEdit = false
-        selectedSearchForEdit = null
-        showSearchHistoryId = null
-        selectedMonitorId = null
+        if (diffLogId != null && diffMonitorId != null) {
+            diffLogId = null
+            diffMonitorId = null
+        } else if (showLogs) {
+            showLogs = false
+        } else if (showTimeline) {
+            showTimeline = false
+        } else if (showSettings) {
+            showSettings = false
+        } else if (showReportContent != null) {
+            showReportContent = null
+        } else if (showReportHistory != null) {
+            showReportHistory = null
+        } else if (showReportEdit) {
+            showReportEdit = false
+            selectedReportForEdit = null
+        } else if (showSearchEdit) {
+            showSearchEdit = false
+            selectedSearchForEdit = null
+        } else if (showSearchHistoryId != null) {
+            showSearchHistoryId = null
+        } else if (selectedMonitorId != null) {
+            selectedMonitorId = null
+        }
     }
 
     if (diffLogId != null && diffMonitorId != null) {
