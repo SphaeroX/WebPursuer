@@ -868,7 +868,7 @@ class WebChecker(
 
         val builder =
                 androidx.core.app.NotificationCompat.Builder(context, "web_monitor_channel")
-                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setSmallIcon(android.R.drawable.ic_dialog_info)
                         .setContentTitle(title)
                         .setContentText(notificationText)
                         .setSubText(message)
