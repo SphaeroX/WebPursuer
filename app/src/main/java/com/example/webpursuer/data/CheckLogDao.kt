@@ -15,6 +15,18 @@ interface CheckLogDao {
         )
         fun getLogsForMonitorFiltered(monitorId: Int): Flow<List<CheckLog>>
 
+        @Query("""
+            SELECT cl.* FROM check_logs cl
+            JOIN monitors m ON cl.monitorId = m.id
+            WHERE cl.monitorId = :monitorId
+            AND (
+                (m.thresholdType = 'PERCENTAGE' AND cl.changePercentage >= m.thresholdValue) OR
+                (m.thresholdType = 'CHARACTER_COUNT' AND cl.changePercentage >= 0)
+            )
+            ORDER BY cl.timestamp DESC
+        """)
+        fun getLogsForMonitorOverThreshold(monitorId: Int): Flow<List<CheckLog>>
+
         @Query("SELECT * FROM check_logs WHERE timestamp > :since AND result = 'CHANGED'")
         suspend fun getChangedLogsSince(since: Long): List<CheckLog>
 

@@ -39,6 +39,10 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         return checkLogDao.getLogsForMonitorFiltered(monitorId)
     }
 
+    fun getLogsForMonitorOverThreshold(monitorId: Int): Flow<List<CheckLog>> {
+        return checkLogDao.getLogsForMonitorOverThreshold(monitorId)
+    }
+
     suspend fun addMonitor(monitor: Monitor, interactions: List<com.murmli.webpursuer.data.Interaction>): Int {
         val insertedId = monitorDao.insertAndReturnId(monitor).toInt()
 

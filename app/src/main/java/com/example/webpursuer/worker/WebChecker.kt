@@ -134,22 +134,28 @@ class WebChecker(
 
                 // Check threshold
                 if (monitor.thresholdValue > 0) {
-                    val thresholdMet =
-                            when (monitor.thresholdType) {
-                                "PERCENTAGE" -> changePercentage >= monitor.thresholdValue
-                                "CHARACTER_COUNT" -> {
-                                    val charDiff =
-                                            kotlin.math.abs(
-                                                    content.length - (previousContent?.length ?: 0)
-                                            )
-                                    charDiff >= monitor.thresholdValue.toInt()
-                                }
-                                else -> true
+                    val isDecrease = content.length < (previousContent?.length ?: 0)
+                    
+                    val thresholdMet = if (monitor.onlyPositiveChanges && isDecrease) {
+                        false // Ignore if it's a decrease and only positive changes are requested
+                    } else {
+                        when (monitor.thresholdType) {
+                            "PERCENTAGE" -> changePercentage >= monitor.thresholdValue
+                            "CHARACTER_COUNT" -> {
+                                val charDiff =
+                                        kotlin.math.abs(
+                                                content.length - (previousContent?.length ?: 0)
+                                        )
+                                charDiff >= monitor.thresholdValue.toInt()
                             }
+                            else -> true
+                        }
+                    }
+                    
                     if (!thresholdMet) {
                         shouldNotify = false
-                        message +=
-                                " (below threshold ${monitor.thresholdValue}${if (monitor.thresholdType == "PERCENTAGE") "%" else " chars"})"
+                        val reason = if (monitor.onlyPositiveChanges && isDecrease) " (ignoring text removal)" else " (below threshold ${monitor.thresholdValue}${if (monitor.thresholdType == "PERCENTAGE") "%" else " chars"})"
+                        message += reason
                     } else {
                         message += " (${String.format("%.1f", changePercentage)}% change)"
                     }

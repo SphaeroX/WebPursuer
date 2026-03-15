@@ -26,5 +26,6 @@ data class Monitor(
         val aiInterpreterInstruction: String = "Summarize the key information.",
         @androidx.room.ColumnInfo(defaultValue = "0") val useWebSearch: Boolean = false,
         @androidx.room.ColumnInfo(defaultValue = "'PERCENTAGE'") val thresholdType: String = "PERCENTAGE", // PERCENTAGE or CHARACTER_COUNT
-        @androidx.room.ColumnInfo(defaultValue = "0.0") val thresholdValue: Double = 0.0 // 0 means disabled, otherwise minimum change required
+        @androidx.room.ColumnInfo(defaultValue = "0.0") val thresholdValue: Double = 0.0, // 0 means disabled, otherwise minimum change required
+        @androidx.room.ColumnInfo(defaultValue = "1") val onlyPositiveChanges: Boolean = true // If true, only trigger if new content is added
 )

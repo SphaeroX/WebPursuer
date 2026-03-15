@@ -68,8 +68,14 @@ fun DiffScreen(
     val diffFilterMode by viewModel.diffFilterMode.collectAsState(initial = "ALL")
     val savedDiffViewMode by viewModel.diffViewMode.collectAsState(initial = "DIFF")
 
+    // Navigation filter state
+    var showOnlyOverThresholdNav by remember { mutableStateOf(false) }
+
     // State for navigation
-    val logs by viewModel.getLogsForMonitorFiltered(monitorId).collectAsState(initial = emptyList())
+    val logs by (if (showOnlyOverThresholdNav) 
+        viewModel.getLogsForMonitorOverThreshold(monitorId) 
+    else viewModel.getLogsForMonitorFiltered(monitorId))
+        .collectAsState(initial = emptyList())
     var monitor by remember { mutableStateOf<Monitor?>(null) }
 
     // Current Index in the logs list (0 = Newest)
@@ -224,6 +230,23 @@ fun DiffScreen(
                                             Icon(Icons.Default.DateRange, contentDescription = null)
                                         }
                                 )
+                                DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (showOnlyOverThresholdNav) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                } else {
+                                                    Spacer(modifier = Modifier.width(26.dp))
+                                                }
+                                                Text("Navigation: Over Threshold Only")
+                                            }
+                                        },
+                                        onClick = {
+                                            showOnlyOverThresholdNav = !showOnlyOverThresholdNav
+                                            showFilterMenu = false
+                                        }
+                                )
                                 androidx.compose.material3.HorizontalDivider()
                                 
                                 val filterModes = listOf(
@@ -368,12 +391,21 @@ fun DiffScreen(
                         Column {
                             Text("Compare with:", color = Color.Gray, fontSize = 12.sp)
                             previousLog?.let {
-                                Text(
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
                                         SimpleDateFormat("dd.MM.yy, HH:mm", Locale.getDefault())
-                                                .format(Date(it.timestamp)),
+                                            .format(Date(it.timestamp)),
                                         color = Color(0xFFE57373),
                                         fontSize = 12.sp
-                                )
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "(${String.format("%.1f", currentLog.changePercentage)}% change)",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    )
+                                }
                             }
                                     ?: Text(
                                             "None (Initial)",

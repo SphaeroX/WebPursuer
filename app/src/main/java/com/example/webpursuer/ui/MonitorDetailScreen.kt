@@ -1,5 +1,6 @@
 package com.murmli.webpursuer.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -647,14 +648,17 @@ fun MonitorDetailScreen(
                                                     },
                                                     label = {
                                                         Text(
-                                                            if (monitor.thresholdType == "PERCENTAGE") 
-                                                                "Threshold % (0 = disabled)" 
-                                                            else 
+                                                            if (monitor.thresholdType == "PERCENTAGE")
+                                                                "Threshold % (0 = disabled)"
+                                                            else
                                                                 "Threshold characters (0 = disabled)"
                                                         )
                                                     },
                                                     modifier = Modifier.fillMaxWidth(),
                                                     singleLine = true,
+                                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
+                                                    ),
                                                     supportingText = {
                                                         Text(
                                                             if (monitor.thresholdType == "PERCENTAGE")
@@ -665,6 +669,31 @@ fun MonitorDetailScreen(
                                                     }
                                                 )
 
+                                                Spacer(modifier = Modifier.height(8.dp))
+
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            "Only positive changes",
+                                                            style = MaterialTheme.typography.bodyLarge
+                                                        )
+                                                        Text(
+                                                            "Only notify if content is added, ignore if text disappears",
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                    }
+                                                    Switch(
+                                                        checked = monitor.onlyPositiveChanges,
+                                                        onCheckedChange = { checked ->
+                                                            viewModel.updateMonitor(
+                                                                monitor.copy(onlyPositiveChanges = checked)
+                                                            )
+                                                        }
+                                                    )
+                                                }
                                         }
                                 }
                         }
@@ -1030,12 +1059,60 @@ fun MonitorDetailScreen(
                         }
 
                         // ITEM 2: Section Header
-                        item { Text("Check History", style = MaterialTheme.typography.titleMedium) }
+                        item {
+                                var showOnlyOverThresholdLogs by remember { mutableStateOf(false) }
+                                val filteredLogs by (if (showOnlyOverThresholdLogs)
+                                        viewModel.getLogsForMonitorOverThreshold(monitor.id)
+                                else viewModel.getLogsForMonitor(monitor.id))
+                                        .collectAsState(initial = emptyList())
 
-                        // ITEM 3: Logs List (directly as items in parent LazyColumn)
-                        itemsIndexed(logs) { index, log -> 
-                            val previousLog = if (index < logs.size - 1) logs[index + 1] else null
-                            LogItem(log, previousLog = previousLog, onClick = { onLogClick(log) }) 
+                                Column {
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                                Text(
+                                                        "Check History",
+                                                        style = MaterialTheme.typography.titleMedium
+                                                )
+                                                Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.clickable {
+                                                                showOnlyOverThresholdLogs =
+                                                                        !showOnlyOverThresholdLogs
+                                                        }
+                                                ) {
+                                                        Text(
+                                                                "Over threshold only",
+                                                                style = MaterialTheme.typography.labelMedium
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Checkbox(
+                                                                checked = showOnlyOverThresholdLogs,
+                                                                onCheckedChange = {
+                                                                        showOnlyOverThresholdLogs = it
+                                                                },
+                                                                modifier = Modifier.size(32.dp)
+                                                        )
+                                                }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        filteredLogs.forEachIndexed { index, log ->
+                                                val previousLog =
+                                                        if (index < filteredLogs.size - 1)
+                                                                filteredLogs[index + 1]
+                                                        else null
+                                                LogItem(
+                                                        log,
+                                                        previousLog = previousLog,
+                                                        onClick = { onLogClick(log) }
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                        }
+                                }
                         }
                 }
         }

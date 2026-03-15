@@ -45,7 +45,13 @@ WebPursuer is a native Android application designed to monitor websites for chan
     *   Always increment `versionName` by **0.001** (e.g., 1.113 -> 1.114).
 *   **Architecture**: MVVM (Model-View-ViewModel) is used.
 *   **Jetpack Compose**: Primary UI framework. ViewModels are injected into Composable screens.
-*   **Database**: Room is used for persistence. Changes to models require Room migrations if already deployed.
+* **Database**: Room is used for persistence. 
+    *   **Migrations**: **NEVER** use `fallbackToDestructiveMigration()` for schema changes after the initial development phase.
+    *   Always use `AutoMigration` (e.g., `@Database(..., autoMigrations = [AutoMigration(from = X, to = Y)])`).
+    *   Ensure `exportSchema = true` is set in `AppDatabase.kt`.
+    *   Increment `version` in `AppDatabase.kt` for every schema change.
+    *   The schema files in `app/schemas/` must be maintained to allow Room to generate migrations.
+
 *   **Package Name**: `com.murmli.webpursuer` (Note: the physical directory structure currently uses `com/example/webpursuer/` in `app/src/main/java`, but the code uses the correct package declaration).
 * **Commits**: Führe nach jeder Änderung (Feature, Fix, Refactoring) einen Git-Commit durch.
 * **Macros**: User interactions are recorded as JSON-based `Interaction` objects and replayed in a headless WebView.
