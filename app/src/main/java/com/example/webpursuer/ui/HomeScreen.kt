@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NotificationsPaused
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card

@@ -5,6 +5,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.murmli.webpursuer.data.SettingsRepository
 import com.murmli.webpursuer.network.OpenRouterService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date

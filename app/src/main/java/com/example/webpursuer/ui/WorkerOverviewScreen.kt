@@ -24,6 +24,7 @@ import com.murmli.webpursuer.data.Monitor
 import com.murmli.webpursuer.data.Report
 import com.murmli.webpursuer.data.Search
 import com.murmli.webpursuer.data.SettingsRepository
+import kotlinx.coroutines.launch
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,16 +81,16 @@ fun WorkerOverviewScreen(
                     startHour = workerQuietStart,
                     endHour = workerQuietEnd,
                     onEnabledChange = {
-                        kotlinx.coroutines.launch { settingsRepository.saveWorkerQuietEnabled(it) }
+                        scope.launch { settingsRepository.saveWorkerQuietEnabled(it) }
                     },
                     onStartTimeClick = {
                         android.app.TimePickerDialog(context, { _, h, _ ->
-                            kotlinx.coroutines.launch { settingsRepository.saveWorkerQuietStartHour(h) }
+                            scope.launch { settingsRepository.saveWorkerQuietStartHour(h) }
                         }, workerQuietStart, 0, true).show()
                     },
                     onEndTimeClick = {
                         android.app.TimePickerDialog(context, { _, h, _ ->
-                            kotlinx.coroutines.launch { settingsRepository.saveWorkerQuietEndHour(h) }
+                            scope.launch { settingsRepository.saveWorkerQuietEndHour(h) }
                         }, workerQuietEnd, 0, true).show()
                     }
                 )
@@ -103,16 +104,16 @@ fun WorkerOverviewScreen(
                     startHour = notificationQuietStart,
                     endHour = notificationQuietEnd,
                     onEnabledChange = {
-                        kotlinx.coroutines.launch { settingsRepository.saveNotificationQuietEnabled(it) }
+                        scope.launch { settingsRepository.saveNotificationQuietEnabled(it) }
                     },
                     onStartTimeClick = {
                         android.app.TimePickerDialog(context, { _, h, _ ->
-                            kotlinx.coroutines.launch { settingsRepository.saveNotificationQuietStartHour(h) }
+                            scope.launch { settingsRepository.saveNotificationQuietStartHour(h) }
                         }, notificationQuietStart, 0, true).show()
                     },
                     onEndTimeClick = {
                         android.app.TimePickerDialog(context, { _, h, _ ->
-                            kotlinx.coroutines.launch { settingsRepository.saveNotificationQuietEndHour(h) }
+                            scope.launch { settingsRepository.saveNotificationQuietEndHour(h) }
                         }, notificationQuietEnd, 0, true).show()
                     }
                 )
@@ -210,15 +211,15 @@ sealed class JobItemData {
     }
 
     data class ReportJob(val report: Report) : JobItemData() {
-        override fun getTitle() = report.title
-        override fun getSubtitle() = "Report • Daily at ${String.format("%02d:00", report.targetHour)}"
+        override fun getTitle() = report.name
+        override fun getSubtitle() = "Report • Daily at ${String.format("%02d:00", report.scheduleHour)}"
         override fun getIcon() = Icons.Default.Description
         override fun isEnabled() = report.enabled
     }
 
     data class SearchJob(val search: Search) : JobItemData() {
         override fun getTitle() = if (search.title.isBlank()) search.prompt else search.title
-        override fun getSubtitle() = "Search • Interval ${search.checkIntervalMinutes}m"
+        override fun getSubtitle() = "Search • Interval ${search.intervalMinutes}m"
         override fun getIcon() = Icons.Default.Search
         override fun isEnabled() = search.enabled
     }
