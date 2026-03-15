@@ -51,6 +51,17 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                 }
 
                 try {
+                    // Check for quiet time
+                    val isQuietEnabled = settingsRepository.workerQuietEnabled.kotlinx.coroutines.flow.first()
+                    if (isQuietEnabled) {
+                        val start = settingsRepository.workerQuietStartHour.kotlinx.coroutines.flow.first()
+                        val end = settingsRepository.workerQuietEndHour.kotlinx.coroutines.flow.first()
+                        if (settingsRepository.isQuietTime(start, end)) {
+                            Log.d("WebCheckWorker", "Skipping worker: Quiet time active ($start to $end)")
+                            return@withContext Result.success() // Or retry? Success is safer to avoid looping
+                        }
+                    }
+
                     if (monitorId != -1) {
                         val monitor = monitorDao.getById(monitorId)
                         if (monitor != null && monitor.enabled) {

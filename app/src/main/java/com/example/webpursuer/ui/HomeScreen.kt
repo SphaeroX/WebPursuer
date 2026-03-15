@@ -67,6 +67,7 @@ fun HomeScreen(
 
     // Navigation States
     var showSettings by remember { mutableStateOf(false) }
+    var showWorkerOverview by remember { mutableStateOf(false) }
     var showLogs by remember { mutableStateOf(false) }
     var showTimeline by remember { mutableStateOf(false) }
     var showReportEdit by remember { mutableStateOf(false) }
@@ -104,6 +105,7 @@ fun HomeScreen(
                 showLogs ||
                 showTimeline ||
                 showSettings ||
+                showWorkerOverview ||
                 showReportContent != null ||
                 showReportHistory != null ||
                 showReportEdit ||
@@ -123,6 +125,8 @@ fun HomeScreen(
             showTimeline = false
         } else if (showSettings) {
             showSettings = false
+        } else if (showWorkerOverview) {
+            showWorkerOverview = false
         } else if (showReportContent != null) {
             showReportContent = null
         } else if (showReportHistory != null) {
@@ -169,6 +173,31 @@ fun HomeScreen(
                     showSettings = false
                     showLogs = true
                 }
+        )
+    } else if (showWorkerOverview) {
+        val reports by reportViewModel.reports.collectAsState()
+        val searches by searchViewModel.searches.collectAsState()
+        val settingsRepository = com.murmli.webpursuer.data.SettingsRepository(androidx.compose.ui.platform.LocalContext.current)
+        WorkerOverviewScreen(
+            onBackClick = { showWorkerOverview = false },
+            monitors = monitors,
+            reports = reports,
+            searches = searches,
+            settingsRepository = settingsRepository,
+            onEditMonitor = { id -> 
+                selectedMonitorId = id
+                showWorkerOverview = false 
+            },
+            onEditReport = { report -> 
+                selectedReportForEdit = report
+                showReportEdit = true
+                showWorkerOverview = false
+            },
+            onEditSearch = { search -> 
+                selectedSearchForEdit = search
+                showSearchEdit = true
+                showWorkerOverview = false
+            }
         )
     } else if (showReportContent != null) {
         ReportContentScreen(
@@ -234,6 +263,12 @@ fun HomeScreen(
                                                         MaterialTheme.colorScheme.onPrimaryContainer
                                         ),
                                 actions = {
+                                    IconButton(onClick = { showWorkerOverview = true }) {
+                                        Icon(
+                                                Icons.Default.NotificationsPaused,
+                                                contentDescription = "Worker Overview"
+                                        )
+                                    }
                                     IconButton(onClick = { showTimeline = true }) {
                                         Icon(
                                                 Icons.Default.DateRange,

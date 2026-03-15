@@ -27,6 +27,17 @@ class ReportWorker(context: Context, workerParams: WorkerParameters) :
             return Result.retry()
         }
         try {
+            // Check for quiet time
+            val isQuietEnabled = settingsRepository.workerQuietEnabled.first()
+            if (isQuietEnabled) {
+                val start = settingsRepository.workerQuietStartHour.first()
+                val end = settingsRepository.workerQuietEndHour.first()
+                if (settingsRepository.isQuietTime(start, end)) {
+                    android.util.Log.d("ReportWorker", "Skipping report worker: Quiet time active ($start to $end)")
+                    return Result.success()
+                }
+            }
+
             val reportId = inputData.getInt("report_id", -1)
             if (reportId == -1) {
                 // Fallback for legacy global worker if still active, or error

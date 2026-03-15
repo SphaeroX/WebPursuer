@@ -38,6 +38,14 @@ class SettingsRepository(private val context: Context) {
         
         val RECENT_CHANGES_PAGE_SIZE = androidx.datastore.preferences.core.intPreferencesKey("recent_changes_page_size")
         val RECENT_CHANGES_SORT_ORDER = stringPreferencesKey("recent_changes_sort_order") // "DESC" or "ASC"
+        
+        val WORKER_QUIET_START_HOUR = androidx.datastore.preferences.core.intPreferencesKey("worker_quiet_start_hour")
+        val WORKER_QUIET_END_HOUR = androidx.datastore.preferences.core.intPreferencesKey("worker_quiet_end_hour")
+        val WORKER_QUIET_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("worker_quiet_enabled")
+        
+        val NOTIFICATION_QUIET_START_HOUR = androidx.datastore.preferences.core.intPreferencesKey("notification_quiet_start_hour")
+        val NOTIFICATION_QUIET_END_HOUR = androidx.datastore.preferences.core.intPreferencesKey("notification_quiet_end_hour")
+        val NOTIFICATION_QUIET_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("notification_quiet_enabled")
     }
 
     val apiKey: Flow<String?> =
@@ -96,6 +104,24 @@ class SettingsRepository(private val context: Context) {
     val recentChangesSortOrder: Flow<String> =
             context.dataStore.data.map { preferences -> preferences[RECENT_CHANGES_SORT_ORDER] ?: "DESC" }
 
+    val workerQuietStartHour: Flow<Int> =
+            context.dataStore.data.map { preferences -> preferences[WORKER_QUIET_START_HOUR] ?: 22 } // Default 10 PM
+            
+    val workerQuietEndHour: Flow<Int> =
+            context.dataStore.data.map { preferences -> preferences[WORKER_QUIET_END_HOUR] ?: 6 } // Default 6 AM
+            
+    val workerQuietEnabled: Flow<Boolean> =
+            context.dataStore.data.map { preferences -> preferences[WORKER_QUIET_ENABLED] ?: false }
+            
+    val notificationQuietStartHour: Flow<Int> =
+            context.dataStore.data.map { preferences -> preferences[NOTIFICATION_QUIET_START_HOUR] ?: 22 }
+            
+    val notificationQuietEndHour: Flow<Int> =
+            context.dataStore.data.map { preferences -> preferences[NOTIFICATION_QUIET_END_HOUR] ?: 6 }
+            
+    val notificationQuietEnabled: Flow<Boolean> =
+            context.dataStore.data.map { preferences -> preferences[NOTIFICATION_QUIET_ENABLED] ?: false }
+
     suspend fun saveApiKey(key: String) {
         context.dataStore.edit { preferences -> preferences[OPENROUTER_API_KEY] = key }
     }
@@ -150,5 +176,41 @@ class SettingsRepository(private val context: Context) {
     
     suspend fun saveRecentChangesSortOrder(order: String) {
         context.dataStore.edit { preferences -> preferences[RECENT_CHANGES_SORT_ORDER] = order }
+    }
+
+    suspend fun saveWorkerQuietStartHour(hour: Int) {
+        context.dataStore.edit { preferences -> preferences[WORKER_QUIET_START_HOUR] = hour }
+    }
+    
+    suspend fun saveWorkerQuietEndHour(hour: Int) {
+        context.dataStore.edit { preferences -> preferences[WORKER_QUIET_END_HOUR] = hour }
+    }
+    
+    suspend fun saveWorkerQuietEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences -> preferences[WORKER_QUIET_ENABLED] = enabled }
+    }
+    
+    suspend fun saveNotificationQuietStartHour(hour: Int) {
+        context.dataStore.edit { preferences -> preferences[NOTIFICATION_QUIET_START_HOUR] = hour }
+    }
+    
+    suspend fun saveNotificationQuietEndHour(hour: Int) {
+        context.dataStore.edit { preferences -> preferences[NOTIFICATION_QUIET_END_HOUR] = hour }
+    }
+    
+    suspend fun saveNotificationQuietEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences -> preferences[NOTIFICATION_QUIET_ENABLED] = enabled }
+    }
+
+    fun isQuietTime(startHour: Int, endHour: Int): Boolean {
+        val now = java.util.Calendar.getInstance()
+        val currentHour = now.get(java.util.Calendar.HOUR_OF_DAY)
+        
+        return if (startHour < endHour) {
+            currentHour in startHour until endHour
+        } else {
+            // Over midnight case (e.g., 22 to 06)
+            currentHour >= startHour || currentHour < endHour
+        }
     }
 }

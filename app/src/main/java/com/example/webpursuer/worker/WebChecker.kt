@@ -834,6 +834,17 @@ class WebChecker(
         if (!isGloballyEnabled) {
             return
         }
+        
+        // Check for quiet time
+        val isQuietEnabled = settingsRepository.notificationQuietEnabled.first()
+        if (isQuietEnabled) {
+            val start = settingsRepository.notificationQuietStartHour.first()
+            val end = settingsRepository.notificationQuietEndHour.first()
+            if (settingsRepository.isQuietTime(start, end)) {
+                android.util.Log.d("WebChecker", "Skipping notification: Quiet time active ($start to $end)")
+                return
+            }
+        }
 
         // Check if notifications are enabled for this monitor
         val monitor = monitorDao.getById(monitorId)
