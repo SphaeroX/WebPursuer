@@ -62,6 +62,10 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    suspend fun addInteractions(interactions: List<Interaction>) {
+        interactionDao.insertAll(interactions)
+    }
+
     fun deleteMonitor(monitor: Monitor) {
         viewModelScope.launch { 
             monitorDao.delete(monitor)
