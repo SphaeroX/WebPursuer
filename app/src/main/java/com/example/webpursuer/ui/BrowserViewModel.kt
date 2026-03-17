@@ -41,9 +41,7 @@ class BrowserViewModel : ViewModel() {
     }
 
     fun recordInteraction(type: String, selector: String, value: String) {
-        if (!_isSelecting.value) {
-            _recordedInteractions.add(InteractionData(type, selector, value))
-        }
+        _recordedInteractions.add(InteractionData(type, selector, value))
     }
 
     fun getRecordedInteractions(): List<InteractionData> {

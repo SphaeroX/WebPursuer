@@ -341,6 +341,9 @@ class BrowserActivity : ComponentActivity() {
                                                                 url = actualUrl
                                                         )
                                                 )
+                                                if (newInteractions.isNotEmpty()) {
+                                                    monitorViewModel.addInteractions(newInteractions)
+                                                }
                                             }
                                         } else {
                                             // New Monitor
