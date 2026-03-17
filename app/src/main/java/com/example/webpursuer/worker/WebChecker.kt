@@ -12,12 +12,15 @@ import com.murmli.webpursuer.data.MonitorDao
 import java.io.StringReader
 import java.security.MessageDigest
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+
+class NetworkException(message: String) : Exception(message)
 
 class WebChecker(
         private val context: Context,
@@ -32,55 +35,68 @@ class WebChecker(
     suspend fun checkMonitor(monitor: Monitor, now: Long) {
         try {
             val interactions = interactionDao.getInteractionsForMonitor(monitor.id)
-            var content = ""
+            var content: String? = null
             var attempt = 0
-            while (content.isBlank() && attempt < 3) {
+            var lastError: String? = null
+            
+            while (content == null && attempt < 3) {
                 if (attempt > 0) {
                     android.util.Log.d(
                             "WebChecker",
                             "Retry load content attempt ${attempt + 1} for ${monitor.name}"
                     )
-                    kotlinx.coroutines.delay(2000)
+                    kotlinx.coroutines.delay(3000)
                 }
-                content = loadContent(monitor.url, monitor.selector, interactions)
+                try {
+                    content = loadContent(monitor.url, monitor.selector, interactions)
+                } catch (e: Exception) {
+                    lastError = e.message
+                    android.util.Log.w("WebChecker", "Attempt ${attempt + 1} failed for ${monitor.name}: $lastError")
+                }
                 attempt++
             }
 
-            if (content.isBlank()) {
-                val errorMsg =
-                        "Empty content loaded after $attempt attempts for monitor ${monitor.name} (${monitor.url})."
+            if (content == null) {
+                val errorMsg = lastError ?: "Failed to load content after $attempt attempts."
+                // Throw NetworkException so WebCheckWorker can decide to retry
+                throw NetworkException(errorMsg)
+            }
+
+            // Use a local val to allow smart casting
+            var finalContent: String = content
+
+            if (finalContent.isBlank()) {
+                val errorMsg = "Selector '${monitor.selector}' returned no content for ${monitor.name}."
                 android.util.Log.e("WebChecker", errorMsg)
                 logRepository.logError("MONITOR", errorMsg)
 
-                val logId =
-                        checkLogDao.insert(
-                                CheckLog(
-                                        monitorId = monitor.id,
-                                        timestamp = now,
-                                        result = "FAILURE",
-                                        message = errorMsg,
-                                        content = null,
-                                        rawContent = null
-                                )
+                checkLogDao.insert(
+                        CheckLog(
+                                monitorId = monitor.id,
+                                timestamp = now,
+                                result = "FAILURE",
+                                message = errorMsg,
+                                content = null,
+                                rawContent = null
                         )
-
-                sendNotification(monitor.id, logId.toInt(), "Monitor Failure", errorMsg)
+                )
+                // We don't throw here, as it might be a permanent selector issue, not network
                 return
             }
 
             var rawContent: String? = null
 
             // RSS Handling
-            if (isRssFeed(content)) {
+            if (isRssFeed(finalContent)) {
                 try {
                     logRepository.logInfo(
                             "MONITOR",
                             "RSS Feed detected for ${monitor.name}, parsing content..."
                     )
-                    val parsed = parseRss(content)
+                    val parsed = parseRss(finalContent)
                     if (parsed.isNotBlank()) {
-                        rawContent = content // Save original XML as rawContent
-                        content = parsed
+                        rawContent = finalContent // Save original XML as rawContent
+                        finalContent = parsed
                     }
                 } catch (e: Exception) {
                     logRepository.logError(
@@ -90,20 +106,20 @@ class WebChecker(
                 }
             }
             if (monitor.useAiInterpreter) {
-                rawContent = content
+                rawContent = finalContent
                 logRepository.logInfo(
                         "MONITOR",
                         "Interpreting content with AI for ${monitor.name}..."
                 )
-                content =
+                finalContent =
                         openRouterService.interpretContent(
                                 monitor.aiInterpreterInstruction,
-                                content,
+                                finalContent,
                                 monitor.useWebSearch
                         )
             }
 
-            val contentHash = hash(content)
+            val contentHash = hash(finalContent)
 
             var result: String
             var message: String
@@ -122,30 +138,30 @@ class WebChecker(
                 newHash = contentHash
                 shouldNotify = true
 
-                // Calculate change percentage
+                // Calculate change details
                 val previousLog = checkLogDao.getPreviousLog(monitor.id, now)
-                val previousContent = previousLog?.content
-                changePercentage =
-                        if (previousContent != null) {
-                            calculateChangePercentage(previousContent, content)
-                        } else {
-                            100.0 // If no previous content, assume 100% change
-                        }
+                val previousContent = previousLog?.content ?: ""
+                
+                changePercentage = calculateChangePercentage(previousContent, finalContent)
 
-                // Check threshold
+                // Refined Threshold Check
                 if (monitor.thresholdValue > 0) {
-                    val isDecrease = content.length < (previousContent?.length ?: 0)
-                    
-                    val thresholdMet = if (monitor.onlyPositiveChanges && isDecrease) {
-                        false // Ignore if it's a decrease and only positive changes are requested
+                    val thresholdMet = if (monitor.onlyPositiveChanges) {
+                        // Check if new meaningful content was added
+                        val addedRatio = calculateAddedRatio(previousContent, finalContent)
+                        if (monitor.thresholdType == "PERCENTAGE") {
+                            addedRatio * 100.0 >= monitor.thresholdValue
+                        } else {
+                            // For char count
+                            val addedChars = calculateAddedChars(previousContent, finalContent)
+                            addedChars >= monitor.thresholdValue.toInt()
+                        }
                     } else {
+                        // Classical threshold (any change)
                         when (monitor.thresholdType) {
                             "PERCENTAGE" -> changePercentage >= monitor.thresholdValue
                             "CHARACTER_COUNT" -> {
-                                val charDiff =
-                                        kotlin.math.abs(
-                                                content.length - (previousContent?.length ?: 0)
-                                        )
+                                val charDiff = kotlin.math.abs(finalContent.length - previousContent.length)
                                 charDiff >= monitor.thresholdValue.toInt()
                             }
                             else -> true
@@ -154,7 +170,7 @@ class WebChecker(
                     
                     if (!thresholdMet) {
                         shouldNotify = false
-                        val reason = if (monitor.onlyPositiveChanges && isDecrease) " (ignoring text removal)" else " (below threshold ${monitor.thresholdValue}${if (monitor.thresholdType == "PERCENTAGE") "%" else " chars"})"
+                        val reason = if (monitor.onlyPositiveChanges) " (no significant new content)" else " (below threshold ${monitor.thresholdValue})"
                         message += reason
                     } else {
                         message += " (${String.format("%.1f", changePercentage)}% change)"
@@ -164,8 +180,7 @@ class WebChecker(
                 }
 
                 if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
-                    // Truncate content to avoid token limits (e.g., 8000 chars)
-                    val truncatedContent = com.example.webpursuer.util.DiffUtils.truncate(content)
+                    val truncatedContent = com.example.webpursuer.util.DiffUtils.truncate(finalContent)
                     val llmResult =
                             openRouterService.checkContent(
                                     monitor.llmPrompt,
@@ -176,7 +191,7 @@ class WebChecker(
                         message += " LLM Condition Met."
                     } else {
                         message += " LLM Condition NOT Met."
-                        shouldNotify = false // Don't notify if LLM condition fails
+                        shouldNotify = false
                     }
                 }
             } else {
@@ -196,7 +211,7 @@ class WebChecker(
                                     timestamp = now,
                                     result = result,
                                     message = message,
-                                    content = content,
+                                    content = finalContent,
                                     rawContent = rawContent,
                                     changePercentage = changePercentage
                             )
@@ -207,7 +222,6 @@ class WebChecker(
                     "Check finished for ${monitor.name}: $result - $message"
             )
 
-            // Send Notification if needed
             if (result == "CHANGED" && shouldNotify) {
                 sendNotification(
                         monitor.id,
@@ -217,6 +231,9 @@ class WebChecker(
                         changePercentage
                 )
             }
+        } catch (e: NetworkException) {
+            // Re-throw NetworkException so worker can retry
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
             logRepository.logError(
@@ -241,28 +258,23 @@ class WebChecker(
             url: String,
             selector: String,
             interactions: List<com.murmli.webpursuer.data.Interaction>
-    ): String =
+    ): String? =
             withContext(Dispatchers.Main) {
                 suspendCancellableCoroutine { continuation ->
                     val webView = WebView(context)
+                    var hasResumed = false
                     
-                    // Crucial: Set a fixed layout size so the browser thinks it's on a real screen
-                    // This triggers responsive rendering and makes elements "visible" for extraction
                     webView.layout(0, 0, 1280, 1024)
-                    
                     webView.settings.javaScriptEnabled = true
                     webView.settings.domStorageEnabled = true
                     webView.settings.databaseEnabled = true
                     webView.settings.loadWithOverviewMode = true
                     webView.settings.useWideViewPort = true
                     webView.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    
-                    // Use a Desktop User-Agent to avoid simplified mobile layouts and better bypass bot-detection
                     webView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
                     
                     android.webkit.CookieManager.getInstance().setAcceptCookie(true)
-                    android.webkit.CookieManager.getInstance()
-                            .setAcceptThirdPartyCookies(webView, true)
+                    android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
                     webView.webChromeClient = object : android.webkit.WebChromeClient() {
                         override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
@@ -273,50 +285,60 @@ class WebChecker(
                         }
                     }
 
-                    webView.webViewClient =
-                            object : WebViewClient() {
-                                var pageLoaded = false
+                    webView.webViewClient = object : WebViewClient() {
+                        var pageLoaded = false
 
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    super.onPageFinished(view, url)
-                                    if (pageLoaded) return
-                                    pageLoaded = true
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            if (pageLoaded || hasResumed) return
+                            pageLoaded = true
 
-                                    // Execute interactions sequentially
-                                    Handler(Looper.getMainLooper())
-                                            .postDelayed(
-                                                    {
-                                                        executeInteractions(
-                                                                webView,
-                                                                interactions,
-                                                                0
-                                                        ) {
-                                                            // After all interactions, wait for selector to have content
-                                                            waitForSelectorAndContent(webView, selector) {
-                                                                // Extract content
-                                                                extractContent(webView, selector) { text ->
-                                                                    if (continuation.isActive) {
-                                                                        continuation.resume(text)
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    },
-                                                    3000
-                                            ) // Initial wait
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                executeInteractions(webView, interactions, 0) {
+                                    waitForSelectorAndContent(webView, selector) {
+                                        extractContent(webView, selector) { text ->
+                                            if (!hasResumed && continuation.isActive) {
+                                                hasResumed = true
+                                                continuation.resume(text)
+                                            }
+                                        }
+                                    }
                                 }
+                            }, 3000)
+                        }
 
-                                override fun onReceivedError(
-                                        view: WebView?,
-                                        errorCode: Int,
-                                        description: String?,
-                                        failingUrl: String?
-                                ) {
-                                    android.util.Log.e("WebChecker", "Error loading $failingUrl: $description ($errorCode)")
+                        override fun onReceivedError(view: WebView?, request: android.webkit.WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                            if (request?.isForMainFrame == true) {
+                                val errorMsg = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                                    "${error?.description} (${error?.errorCode})"
+                                } else {
+                                    "WebResourceError"
+                                }
+                                if (!hasResumed && continuation.isActive) {
+                                    hasResumed = true
+                                    continuation.resumeWithException(NetworkException(errorMsg))
                                 }
                             }
+                        }
+                        
+                        @Suppress("DEPRECATION")
+                        override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                            if (!hasResumed && continuation.isActive) {
+                                hasResumed = true
+                                continuation.resumeWithException(NetworkException("$description ($errorCode)"))
+                            }
+                        }
+                    }
 
                     webView.loadUrl(url)
+                    
+                    // Safety Timeout
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        if (!hasResumed && continuation.isActive) {
+                            hasResumed = true
+                            continuation.resumeWithException(NetworkException("Loading timeout reached"))
+                        }
+                    }, 45000)
                 }
             }
 
@@ -402,7 +424,6 @@ class WebChecker(
                 
                 var childTexts = [];
 
-                // Traverse Shadow DOM if it exists
                 if (node.shadowRoot) {
                     for (var i = 0; i < node.shadowRoot.childNodes.length; i++) {
                         var childVal = getRecursiveText(node.shadowRoot.childNodes[i]);
@@ -440,7 +461,7 @@ class WebChecker(
             })();
         """.trimIndent()
 
-        val maxWait = 15000L // 15 seconds max wait for content
+        val maxWait = 15000L
         val pollInterval = 1000L
         val startTime = System.currentTimeMillis()
 
@@ -592,7 +613,6 @@ class WebChecker(
         val js =
                 """
             (function() {
-                // Check if content is XML/RSS
                 var contentType = document.contentType;
                 if (contentType && (contentType.includes('xml') || contentType.includes('rss'))) {
                     return document.documentElement.outerHTML;
@@ -603,7 +623,6 @@ class WebChecker(
                 var element = findEl('$escapedSelector');
                 if (!element) return '';
                 
-                // Clean up multiple newlines
                 return getRecursiveText(element).replace(/\n\s*\n/g, '\n').trim();
             })();
         """.trimIndent()
@@ -613,13 +632,9 @@ class WebChecker(
                     if (result != null && result != "null") {
                         try {
                             var unescaped = result
-
-                            // Remove surrounding quotes if present
                             if (unescaped.startsWith("\"") && unescaped.endsWith("\"")) {
                                 unescaped = unescaped.substring(1, unescaped.length - 1)
                             }
-
-                            // Unescape JSON special characters
                             unescaped =
                                     unescaped
                                             .replace("\\\"", "\"")
@@ -628,7 +643,6 @@ class WebChecker(
                                             .replace("\\r", "\r")
                                             .replace("\\t", "\t")
 
-                            // Decode Unicode escape sequences (\uXXXX)
                             val unicodeRegex = Regex("\\\\u([0-9a-fA-F]{4})")
                             unescaped =
                                     unicodeRegex.replace(unescaped) {
@@ -660,7 +674,6 @@ class WebChecker(
         if (oldLength == 0) return 100.0
         if (oldContent == newContent) return 0.0
 
-        // Use fast approximation for large strings to prevent ANRs
         if (oldLength > 2000 || newLength > 2000) {
             val oldWords = oldContent.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
             val newWords = newContent.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
@@ -673,7 +686,6 @@ class WebChecker(
             return (1.0 - similarity) * 100.0
         }
 
-        // Calculate Levenshtein distance for smaller strings
         val distance = levenshteinDistance(oldContent, newContent)
         val maxLength = kotlin.math.max(oldLength, newLength)
 
@@ -704,6 +716,19 @@ class WebChecker(
         }
 
         return dp[m][n]
+    }
+
+    private fun calculateAddedRatio(oldContent: String, newContent: String): Double {
+        val oldWords = oldContent.split("\\s+".toRegex()).filter { it.length > 2 }.map { it.lowercase() }.toSet()
+        val newWords = newContent.split("\\s+".toRegex()).filter { it.length > 2 }.map { it.lowercase() }.toSet()
+        
+        val addedWords = newWords.subtract(oldWords)
+        if (newWords.isEmpty()) return 0.0
+        return addedWords.size.toDouble() / newWords.size.toDouble()
+    }
+
+    private fun calculateAddedChars(oldContent: String, newContent: String): Int {
+        return kotlin.math.max(0, newContent.length - oldContent.length)
     }
 
     private fun isRssFeed(content: String): Boolean {
@@ -765,7 +790,6 @@ class WebChecker(
                                         name.equals("entry", ignoreCase = true)
                         ) {
                             insideItem = false
-                            // Decode HTML entities in title
                             val decodedTitle = decodeHtmlEntities(title)
                             sb.append("## $decodedTitle\n")
                             if (link.isNotBlank()) sb.append("Link: $link\n")
@@ -835,13 +859,11 @@ class WebChecker(
             message: String,
             changePercentage: Double? = null
     ) {
-        // Check if notifications are enabled globally
         val isGloballyEnabled = settingsRepository.notificationsEnabled.first()
         if (!isGloballyEnabled) {
             return
         }
         
-        // Check for quiet time
         val isQuietEnabled = settingsRepository.notificationQuietEnabled.first()
         if (isQuietEnabled) {
             val start = settingsRepository.notificationQuietStartHour.first()
@@ -852,7 +874,6 @@ class WebChecker(
             }
         }
 
-        // Check if notifications are enabled for this monitor
         val monitor = monitorDao.getById(monitorId)
         if (monitor == null || !monitor.notificationsEnabled) {
             return

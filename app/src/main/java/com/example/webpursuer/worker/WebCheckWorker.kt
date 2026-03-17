@@ -71,7 +71,12 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                                     "MONITOR",
                                     "Checking monitor: ${monitor.name} (${monitor.url})"
                                 )
-                                webChecker.checkMonitor(monitor, System.currentTimeMillis())
+                                try {
+                                    webChecker.checkMonitor(monitor, System.currentTimeMillis())
+                                } catch (e: NetworkException) {
+                                    logRepository.logInfo("MONITOR", "Network error checking ${monitor.name}: ${e.message}. Retrying via WorkManager.")
+                                    return@withContext Result.retry()
+                                }
                             } else {
                                 Log.d("WebCheckWorker", "Skipping monitor ${monitor.name}: Not scheduled for now")
                             }
@@ -79,19 +84,24 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                             Log.d("WebCheckWorker", "Monitor $monitorId not found or disabled")
                         }
                     } else {
-                        // Legacy support: check all (but this is what we want to avoid)
+                        // Legacy support
                         logRepository.logInfo("SYSTEM", "Running legacy WebCheckWorker (checking all monitors)")
                         val monitors = monitorDao.getAllSync()
                         val now = System.currentTimeMillis()
+                        var anyNetworkError = false
                         for (monitor in monitors) {
                             if (shouldRunNow(monitor)) {
                                 try {
                                     webChecker.checkMonitor(monitor, now)
+                                } catch (e: NetworkException) {
+                                    logRepository.logInfo("MONITOR", "Network error for ${monitor.name}: ${e.message}")
+                                    anyNetworkError = true
                                 } catch (e: Exception) {
                                     logRepository.logError("MONITOR", "Error: ${e.message}")
                                 }
                             }
                         }
+                        if (anyNetworkError) return@withContext Result.retry()
                     }
                     Result.success()
                 } catch (e: Exception) {
