@@ -308,10 +308,16 @@
 
     document.addEventListener('click', function (e) {
         if (selectionMode) {
-            e.preventDefault();
-            e.stopPropagation();
-
+            // Update the selector/highlight for the clicked element
             updateHighlight(e.target);
+            
+            // Still record the interaction so navigation/clicks are captured in macros
+            recordWithWait("click", e.target, "");
+            
+            // If it's a link or button, we might want to let it through but with a slight delay 
+            // to ensure Android records the interaction before the page unloads.
+            // Actually, for better UX, we just record it and don't preventDefault unless it's strictly necessary.
+            // But we MUST NOT e.preventDefault() if the user wants to navigate.
             return;
         }
 
@@ -321,8 +327,7 @@
     }, true);
 
     document.addEventListener('input', function (e) {
-        if (selectionMode) return;
-
+        // Record input even in selection mode if the user is interacting with forms during navigation
         var target = e.target;
         var value = target.value;
 
@@ -333,8 +338,6 @@
     }, true);
 
     document.addEventListener('change', function (e) {
-        if (selectionMode) return;
-
         var target = e.target;
         var value = target.value;
 
