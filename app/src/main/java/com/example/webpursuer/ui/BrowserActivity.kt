@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.AdsClick
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -478,14 +480,13 @@ class BrowserActivity : ComponentActivity() {
                                         }
                                 ) {
                                     Icon(
-                                            imageVector = Icons.Default.AddCircle,
+                                            imageVector = Icons.Default.AdsClick,
                                             contentDescription = "Select",
                                             tint =
                                                     if (isSelecting) Color(0xFF008f39)
                                                     else MaterialTheme.colorScheme.onSurface
                                     )
-                                }
-
+                                    }
                                 IconButton(
                                         onClick = {
                                             val inputUrl =
@@ -567,9 +568,10 @@ class BrowserActivity : ComponentActivity() {
                                                                     containerColor = Color.DarkGray
                                                             )
                                             ) {
-                                                Text(
-                                                        "+",
-                                                        style = MaterialTheme.typography.titleMedium
+                                                Icon(
+                                                        imageVector = Icons.Default.ExpandLess,
+                                                        contentDescription = "Parent",
+                                                        tint = Color.White
                                                 )
                                             }
 
@@ -590,9 +592,10 @@ class BrowserActivity : ComponentActivity() {
                                                                     containerColor = Color.DarkGray
                                                             )
                                             ) {
-                                                Text(
-                                                        "-",
-                                                        style = MaterialTheme.typography.titleMedium
+                                                Icon(
+                                                        imageVector = Icons.Default.ExpandMore,
+                                                        contentDescription = "Child",
+                                                        tint = Color.White
                                                 )
                                             }
 
