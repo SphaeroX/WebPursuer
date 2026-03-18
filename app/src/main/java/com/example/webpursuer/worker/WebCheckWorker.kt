@@ -52,6 +52,9 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                 }
 
                 try {
+                    val monitor = if (monitorId != -1) monitorDao.getById(monitorId) else null
+                    val isSpecificTime = monitor?.scheduleType == "SPECIFIC_TIME" || monitor?.scheduleType == "DAILY"
+
                     // Check for quiet time
                     val isQuietEnabled = settingsRepository.workerQuietEnabled.first()
                     if (isQuietEnabled) {
@@ -59,12 +62,13 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                         val end = settingsRepository.workerQuietEndHour.first()
                         if (settingsRepository.isQuietTime(start, end)) {
                             Log.d("WebCheckWorker", "Skipping worker: Quiet time active ($start to $end)")
-                            return@withContext Result.success() // Or retry? Success is safer to avoid looping
+                            // If it's a specific time monitor, we should retry so it runs after quiet time
+                            // instead of skipping the entire day.
+                            return@withContext if (isSpecificTime) Result.retry() else Result.success()
                         }
                     }
 
                     if (monitorId != -1) {
-                        val monitor = monitorDao.getById(monitorId)
                         if (monitor != null && monitor.enabled) {
                             if (shouldRunNow(monitor)) {
                                 logRepository.logInfo(
@@ -78,7 +82,7 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                                     return@withContext Result.retry()
                                 }
                             } else {
-                                Log.d("WebCheckWorker", "Skipping monitor ${monitor.name}: Not scheduled for now")
+                                Log.d("WebCheckWorker", "Skipping monitor ${monitor.name}: Not scheduled for today (Bitmask: ${monitor.scheduleDays})")
                             }
                         } else {
                             Log.d("WebCheckWorker", "Monitor $monitorId not found or disabled")
@@ -89,12 +93,12 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                         val monitors = monitorDao.getAllSync()
                         val now = System.currentTimeMillis()
                         var anyNetworkError = false
-                        for (monitor in monitors) {
-                            if (shouldRunNow(monitor)) {
+                        for (monitorItem in monitors) {
+                            if (shouldRunNow(monitorItem)) {
                                 try {
-                                    webChecker.checkMonitor(monitor, now)
+                                    webChecker.checkMonitor(monitorItem, now)
                                 } catch (e: NetworkException) {
-                                    logRepository.logInfo("MONITOR", "Network error for ${monitor.name}: ${e.message}")
+                                    logRepository.logInfo("MONITOR", "Network error for ${monitorItem.name}: ${e.message}")
                                     anyNetworkError = true
                                 } catch (e: Exception) {
                                     logRepository.logError("MONITOR", "Error: ${e.message}")
@@ -115,11 +119,14 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
             }
 
     private fun shouldRunNow(monitor: Monitor): Boolean {
-        if (monitor.scheduleType != "SPECIFIC_TIME") return true
+        if (monitor.scheduleType != "SPECIFIC_TIME" && monitor.scheduleType != "DAILY") return true
         
         val calendar = Calendar.getInstance()
+        // Convert Calendar.DAY_OF_WEEK (Sun=1..Sat=7) to our index (Mon=0..Sun=6)
         val dayIndex = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7
-        return (monitor.scheduleDays and (1 shl dayIndex)) != 0
+        val isEnabled = (monitor.scheduleDays and (1 shl dayIndex)) != 0
+        Log.d("WebCheckWorker", "Checking schedule for ${monitor.name}: DayIndex=$dayIndex, Bitmask=${monitor.scheduleDays}, Enabled=$isEnabled")
+        return isEnabled
     }
 
     companion object {
@@ -137,8 +144,9 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                 .build()
 
             val inputData = workDataOf("monitorId" to monitor.id)
+            val isSpecificTime = monitor.scheduleType == "SPECIFIC_TIME" || monitor.scheduleType == "DAILY"
 
-            val workRequest = if (monitor.scheduleType == "SPECIFIC_TIME") {
+            val workRequest = if (isSpecificTime) {
                 val now = Calendar.getInstance()
                 val target = Calendar.getInstance().apply {
                     set(Calendar.HOUR_OF_DAY, monitor.scheduleHour)
@@ -151,11 +159,12 @@ class WebCheckWorker(context: Context, params: WorkerParameters) :
                 }
                 val initialDelay = target.timeInMillis - now.timeInMillis
                 
+                // For specific time, we use a slightly larger backoff to avoid spamming if it hits quiet time
                 PeriodicWorkRequestBuilder<WebCheckWorker>(24, TimeUnit.HOURS)
                     .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
                     .setInputData(inputData)
                     .setConstraints(constraints)
-                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
+                    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES)
                     .build()
             } else {
                 val interval = monitor.checkIntervalMinutes.coerceAtLeast(15)

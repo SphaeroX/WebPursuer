@@ -176,16 +176,16 @@ fun MonitorDetailScreen(
 
                                                 // Update state variables to use properties from
                                                 // monitor
-                                                var scheduleType by remember {
+                                                var scheduleType by remember(monitor.id, monitor.scheduleType) {
                                                         mutableStateOf(monitor.scheduleType)
                                                 }
-                                                var scheduleHour by remember {
+                                                var scheduleHour by remember(monitor.id, monitor.scheduleHour) {
                                                         mutableIntStateOf(monitor.scheduleHour)
                                                 }
-                                                var scheduleMinute by remember {
+                                                var scheduleMinute by remember(monitor.id, monitor.scheduleMinute) {
                                                         mutableIntStateOf(monitor.scheduleMinute)
                                                 }
-                                                var scheduleDays by remember {
+                                                var scheduleDays by remember(monitor.id, monitor.scheduleDays) {
                                                         mutableIntStateOf(monitor.scheduleDays)
                                                 }
 

@@ -24,6 +24,12 @@ class SearchWorker(context: Context, workerParams: WorkerParameters) :
         val openRouterService = OpenRouterService(settingsRepository, logRepository)
 
         return try {
+            val search = searchRepository.getSearchById(searchId)
+            if (search == null) {
+                logRepository.logError("SearchWorker", "Search ID $searchId not found")
+                return Result.failure()
+            }
+
             // Check for quiet time
             val isQuietEnabled = settingsRepository.workerQuietEnabled.first()
             if (isQuietEnabled) {
@@ -31,14 +37,8 @@ class SearchWorker(context: Context, workerParams: WorkerParameters) :
                 val end = settingsRepository.workerQuietEndHour.first()
                 if (settingsRepository.isQuietTime(start, end)) {
                     android.util.Log.d("SearchWorker", "Skipping search worker: Quiet time active ($start to $end)")
-                    return Result.success()
+                    return if (search.scheduleType == "SPECIFIC_TIME") Result.retry() else Result.success()
                 }
-            }
-
-            val search = searchRepository.getSearchById(searchId)
-            if (search == null) {
-                logRepository.logError("SearchWorker", "Search ID $searchId not found")
-                return Result.failure()
             }
 
             logRepository.logInfo("SearchWorker", "Executing search: ${search.prompt}")
