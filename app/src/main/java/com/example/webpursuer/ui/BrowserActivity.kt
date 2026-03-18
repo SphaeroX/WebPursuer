@@ -8,15 +8,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AdsClick
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -512,6 +514,14 @@ class BrowserActivity : ComponentActivity() {
                                         modifier =
                                                 Modifier.fillMaxWidth()
                                                         .background(Color.Black.copy(alpha = 0.8f))
+                                                        .clickable(
+                                                                interactionSource =
+                                                                        remember {
+                                                                            MutableInteractionSource()
+                                                                        },
+                                                                indication = null,
+                                                                onClick = {} // Consume clicks
+                                                        )
                                                         .padding(8.dp)
                                 ) {
                                     // Row 1: Selector
@@ -563,14 +573,15 @@ class BrowserActivity : ComponentActivity() {
                                                     },
                                                     contentPadding = PaddingValues(0.dp),
                                                     modifier = Modifier.size(40.dp),
+                                                    shape = MaterialTheme.shapes.small,
                                                     colors =
                                                             ButtonDefaults.buttonColors(
                                                                     containerColor = Color.DarkGray
                                                             )
                                             ) {
                                                 Icon(
-                                                        imageVector = Icons.Default.ExpandLess,
-                                                        contentDescription = "Parent",
+                                                        imageVector = Icons.Default.Add,
+                                                        contentDescription = "Mehr Auswahl",
                                                         tint = Color.White
                                                 )
                                             }
@@ -587,14 +598,15 @@ class BrowserActivity : ComponentActivity() {
                                                     },
                                                     contentPadding = PaddingValues(0.dp),
                                                     modifier = Modifier.size(40.dp),
+                                                    shape = MaterialTheme.shapes.small,
                                                     colors =
                                                             ButtonDefaults.buttonColors(
                                                                     containerColor = Color.DarkGray
                                                             )
                                             ) {
                                                 Icon(
-                                                        imageVector = Icons.Default.ExpandMore,
-                                                        contentDescription = "Child",
+                                                        imageVector = Icons.Default.Remove,
+                                                        contentDescription = "Weniger Auswahl",
                                                         tint = Color.White
                                                 )
                                             }
