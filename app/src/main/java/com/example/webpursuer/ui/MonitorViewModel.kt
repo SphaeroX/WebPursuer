@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -70,6 +71,45 @@ class MonitorViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { 
             monitorDao.delete(monitor)
             com.murmli.webpursuer.worker.WebCheckWorker.cancelMonitor(getApplication(), monitor.id)
+        }
+    }
+
+    fun shareDebugLog(monitor: Monitor) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val checkLogs = checkLogDao.getLogsForMonitor(monitor.id).first()
+            val appLogs = database.appLogDao().getLogsForMonitor(monitor.id).first()
+            
+            val debugData = mapOf(
+                "monitor" to monitor,
+                "checkLogs" to checkLogs,
+                "appLogs" to appLogs
+            )
+            
+            val gson = com.google.gson.GsonBuilder().setPrettyPrinting().create()
+            val json = gson.toJson(debugData)
+            
+            val cacheDir = java.io.File(getApplication<Application>().cacheDir, "logs")
+            if (!cacheDir.exists()) cacheDir.mkdirs()
+            
+            val fileName = "debug_log_${monitor.id}_${System.currentTimeMillis()}.json"
+            val file = java.io.File(cacheDir, fileName)
+            file.writeText(json)
+            
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                getApplication(),
+                "com.murmli.webpursuer.fileprovider",
+                file
+            )
+            
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            
+            val chooser = android.content.Intent.createChooser(intent, "Share Debug Log")
+            chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            getApplication<Application>().startActivity(chooser)
         }
     }
 

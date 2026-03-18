@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -90,6 +91,14 @@ fun MonitorDetailScreen(
                                                 Icon(
                                                         Icons.Default.PlayArrow,
                                                         contentDescription = "Run Now Visually"
+                                                )
+                                        }
+                                        IconButton(onClick = {
+                                                viewModel.shareDebugLog(monitor)
+                                        }) {
+                                                Icon(
+                                                        Icons.Default.BugReport,
+                                                        contentDescription = "Share Debug Log"
                                                 )
                                         }
                                 }

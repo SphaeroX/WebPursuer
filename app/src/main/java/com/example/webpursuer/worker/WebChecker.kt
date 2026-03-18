@@ -68,7 +68,7 @@ class WebChecker(
             if (finalContent.isBlank()) {
                 val errorMsg = "Selector '${monitor.selector}' returned no content for ${monitor.name}."
                 android.util.Log.e("WebChecker", errorMsg)
-                logRepository.logError("MONITOR", errorMsg)
+                logRepository.logError("MONITOR", errorMsg, monitorId = monitor.id)
 
                 checkLogDao.insert(
                         CheckLog(
@@ -91,7 +91,8 @@ class WebChecker(
                 try {
                     logRepository.logInfo(
                             "MONITOR",
-                            "RSS Feed detected for ${monitor.name}, parsing content..."
+                            "RSS Feed detected for ${monitor.name}, parsing content...",
+                            monitorId = monitor.id
                     )
                     val parsed = parseRss(finalContent)
                     if (parsed.isNotBlank()) {
@@ -101,7 +102,8 @@ class WebChecker(
                 } catch (e: Exception) {
                     logRepository.logError(
                             "MONITOR",
-                            "Failed to parse RSS for ${monitor.name}: ${e.message}"
+                            "Failed to parse RSS for ${monitor.name}: ${e.message}",
+                            monitorId = monitor.id
                     )
                 }
             }
@@ -109,7 +111,8 @@ class WebChecker(
                 rawContent = finalContent
                 logRepository.logInfo(
                         "MONITOR",
-                        "Interpreting content with AI for ${monitor.name}..."
+                        "Interpreting content with AI for ${monitor.name}...",
+                        monitorId = monitor.id
                 )
                 finalContent =
                         openRouterService.interpretContent(
@@ -219,7 +222,8 @@ class WebChecker(
 
             logRepository.logInfo(
                     "MONITOR",
-                    "Check finished for ${monitor.name}: $result - $message"
+                    "Check finished for ${monitor.name}: $result - $message",
+                    monitorId = monitor.id
             )
 
             if (result == "CHANGED" && shouldNotify) {
@@ -239,7 +243,8 @@ class WebChecker(
             logRepository.logError(
                     "MONITOR",
                     "Unexpected error checking ${monitor.name}: ${e.message}",
-                    e.stackTraceToString()
+                    e.stackTraceToString(),
+                    monitorId = monitor.id
             )
             checkLogDao.insert(
                     CheckLog(

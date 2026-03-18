@@ -12,6 +12,9 @@ interface AppLogDao {
     @Query("SELECT * FROM app_logs WHERE isError = 1 ORDER BY timestamp DESC")
     fun getErrorLogs(): Flow<List<AppLog>>
 
+    @Query("SELECT * FROM app_logs WHERE monitorId = :monitorId ORDER BY timestamp DESC")
+    fun getLogsForMonitor(monitorId: Int): Flow<List<AppLog>>
+
     @Insert suspend fun insert(log: AppLog)
 
     @Query("DELETE FROM app_logs") suspend fun deleteAll()

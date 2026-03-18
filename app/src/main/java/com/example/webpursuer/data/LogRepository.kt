@@ -11,7 +11,8 @@ class LogRepository(private val appLogDao: AppLogDao) {
             type: String,
             message: String,
             isError: Boolean = false,
-            details: String? = null
+            details: String? = null,
+            monitorId: Int? = null
     ) {
         val log =
                 AppLog(
@@ -19,17 +20,18 @@ class LogRepository(private val appLogDao: AppLogDao) {
                         type = type,
                         message = message,
                         isError = isError,
-                        details = details
+                        details = details,
+                        monitorId = monitorId
                 )
         appLogDao.insert(log)
     }
 
-    suspend fun logInfo(type: String, message: String) {
-        log(type, message, isError = false)
+    suspend fun logInfo(type: String, message: String, monitorId: Int? = null) {
+        log(type, message, isError = false, monitorId = monitorId)
     }
 
-    suspend fun logError(type: String, message: String, details: String? = null) {
-        log(type, message, isError = true, details = details)
+    suspend fun logError(type: String, message: String, details: String? = null, monitorId: Int? = null) {
+        log(type, message, isError = true, details = details, monitorId = monitorId)
     }
 
     suspend fun clearLogs() {

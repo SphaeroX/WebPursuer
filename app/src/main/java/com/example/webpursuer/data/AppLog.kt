@@ -1,5 +1,6 @@
 package com.murmli.webpursuer.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -10,5 +11,6 @@ data class AppLog(
         val type: String, // MONITOR, LLM, REPORT, ERROR, SYSTEM
         val message: String,
         val isError: Boolean = false,
-        val details: String? = null
+        val details: String? = null,
+        @ColumnInfo(defaultValue = "NULL") val monitorId: Int? = null
 )

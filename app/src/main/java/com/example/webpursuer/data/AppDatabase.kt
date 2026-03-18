@@ -17,7 +17,8 @@ import androidx.room.RoomDatabase
                         AppLog::class,
                         Search::class,
                         SearchLog::class],
-        version = 16,
+        version = 17,
+        autoMigrations = [AutoMigration(from = 16, to = 17)],
         exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
