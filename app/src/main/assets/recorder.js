@@ -163,7 +163,7 @@
             } else {
                 // Try classes if they don't look like tailwind hashes
                 if (curr.classList.length > 0) {
-                    var stableClass = Array.from(curr.classList).find(c => !/[0-9]/.test(c) && c.length > 3);
+                    var stableClass = Array.from(curr.classList).find(c => c !== 'webpursuer-highlight' && !/[0-9]/.test(c) && c.length > 3);
                     if (stableClass) {
                         sel += "." + stableClass;
                     }
@@ -220,10 +220,10 @@
         if (old) old.classList.remove('webpursuer-highlight');
 
         if (el) {
+            var selectors = getSelectors(el);
             el.classList.add('webpursuer-highlight');
             currentElement = el;
 
-            var selectors = getSelectors(el);
             if (window.Android) {
                 window.Android.updateSelector(JSON.stringify(selectors));
             }
