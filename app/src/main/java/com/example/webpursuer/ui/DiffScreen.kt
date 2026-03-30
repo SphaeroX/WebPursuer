@@ -441,20 +441,13 @@ fun DiffScreen(
                         if (showRaw) (currentLog.rawContent ?: "") else (currentLog.content ?: "")
 
                 if (showRendered) {
-                    // Markdown Rendered View
+                    // Markdown Rendered Document View
                     // Use SelectionContainer to allow copying text
                     androidx.compose.foundation.text.selection.SelectionContainer {
-                        // Wrap in LazyColumn for scrolling
-                        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                            item {
-                                Surface(color = Color.Black, contentColor = Color.White) {
-                                    MarkdownText(
-                                            markdown = newText,
-                                            modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
+                        MarkdownDocumentView(
+                            markdown = newText,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 } else {
                     // Diff View
