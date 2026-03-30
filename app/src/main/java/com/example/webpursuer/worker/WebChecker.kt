@@ -70,7 +70,7 @@ class WebChecker(
                 android.util.Log.e("WebChecker", errorMsg)
                 logRepository.logError("MONITOR", errorMsg, monitorId = monitor.id)
 
-                checkLogDao.insert(
+                val logId = checkLogDao.insert(
                         CheckLog(
                                 monitorId = monitor.id,
                                 timestamp = now,
@@ -80,6 +80,15 @@ class WebChecker(
                                 rawContent = null
                         )
                 )
+                
+                // Inform the user about the failure
+                sendNotification(
+                        monitor.id,
+                        logId.toInt(),
+                        "Monitor Error",
+                        errorMsg
+                )
+                
                 // We don't throw here, as it might be a permanent selector issue, not network
                 return
             }
