@@ -107,21 +107,9 @@ class WebChecker(
                     )
                 }
             }
-            if (monitor.useAiInterpreter) {
-                rawContent = finalContent
-                logRepository.logInfo(
-                        "MONITOR",
-                        "Interpreting content with AI for ${monitor.name}...",
-                        monitorId = monitor.id
-                )
-                finalContent =
-                        openRouterService.interpretContent(
-                                monitor.aiInterpreterInstruction,
-                                finalContent,
-                                monitor.useWebSearch
-                        )
-            }
 
+            // Always hash the raw (or parsed RSS) content for stability,
+            // NOT the AI-interpreted content, as LLMs are non-deterministic.
             val contentHash = hash(finalContent)
 
             var result: String
@@ -135,13 +123,37 @@ class WebChecker(
                 result = "SUCCESS"
                 message = "Initial check successful."
                 newHash = contentHash
+
+                // For initial check, we still want to interpret if enabled
+                if (monitor.useAiInterpreter) {
+                    rawContent = finalContent
+                    logRepository.logInfo(
+                            "MONITOR",
+                            "Interpreting initial content with AI for ${monitor.name}...",
+                            monitorId = monitor.id
+                    )
+                    try {
+                        finalContent =
+                                openRouterService.interpretContent(
+                                        monitor.aiInterpreterInstruction,
+                                        finalContent,
+                                        monitor.useWebSearch
+                                )
+                    } catch (e: Exception) {
+                        logRepository.logError(
+                                "MONITOR",
+                                "AI Interpretation failed: ${e.message}",
+                                monitorId = monitor.id
+                        )
+                    }
+                }
             } else if (monitor.lastContentHash != contentHash) {
                 result = "CHANGED"
                 message = "Content changed!"
                 newHash = contentHash
                 shouldNotify = true
 
-                // Calculate change details
+                // Calculate change details based on RAW content
                 val previousLog = checkLogDao.getPreviousLog(monitor.id, now)
                 val previousContent = previousLog?.content ?: ""
                 
@@ -180,6 +192,30 @@ class WebChecker(
                     }
                 } else {
                     message += " (${String.format("%.1f", changePercentage)}% change)"
+                }
+
+                // AI Interpretation - ONLY on change
+                if (monitor.useAiInterpreter && (shouldNotify || monitor.thresholdValue == 0.0)) {
+                    rawContent = finalContent
+                    logRepository.logInfo(
+                            "MONITOR",
+                            "Interpreting changed content with AI for ${monitor.name}...",
+                            monitorId = monitor.id
+                    )
+                    try {
+                        finalContent =
+                                openRouterService.interpretContent(
+                                        monitor.aiInterpreterInstruction,
+                                        finalContent,
+                                        monitor.useWebSearch
+                                )
+                    } catch (e: Exception) {
+                        logRepository.logError(
+                                "MONITOR",
+                                "AI Interpretation failed: ${e.message}",
+                                monitorId = monitor.id
+                        )
+                    }
                 }
 
                 if (monitor.llmEnabled && !monitor.llmPrompt.isNullOrBlank()) {
