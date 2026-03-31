@@ -92,17 +92,10 @@ fun ReportContentScreen(
             ) { CircularProgressIndicator() }
         } else {
             SelectionContainer {
-                LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding),
-                        contentPadding = PaddingValues(16.dp)
-                ) {
-                    item {
-                        MarkdownText(
-                                markdown = currentReport.content,
-                                modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
+                MarkdownDocumentView(
+                    markdown = currentReport.content,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding)
+                )
             }
         }
     }

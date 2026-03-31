@@ -59,29 +59,17 @@ fun SearchHistoryScreen(
                 }
         ) { innerPadding ->
             SelectionContainer {
-                LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding),
-                        contentPadding = PaddingValues(16.dp)
-                ) {
+                val fullMarkdown = buildString {
                     if (log.aiConditionMet != null) {
-                        item {
-                            Text(
-                                    text =
-                                            if (log.aiConditionMet) "AI Condition: MET"
-                                            else "AI Condition: NOT MET",
-                                    color =
-                                            if (log.aiConditionMet)
-                                                    MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
+                        append(if (log.aiConditionMet) "### AI Condition: MET\n\n" else "### AI Condition: NOT MET\n\n")
                     }
-                    item {
-                        MarkdownText(markdown = log.resultText, modifier = Modifier.fillMaxSize())
-                    }
+                    append(log.resultText)
                 }
+                
+                MarkdownDocumentView(
+                    markdown = fullMarkdown,
+                    modifier = Modifier.fillMaxSize().padding(innerPadding)
+                )
             }
         }
     } else {
