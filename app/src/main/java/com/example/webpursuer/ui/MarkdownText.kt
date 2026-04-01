@@ -101,18 +101,24 @@ fun parseBlocks(markdown: String): List<MarkdownBlock> {
 fun MarkdownText(
         markdown: String,
         modifier: Modifier = Modifier,
-        color: Color = Color.Unspecified
+        color: Color = Color.Unspecified,
+        fontSizeMultiplier: Float = 1f
 ) {
     val blocks = remember(markdown) { parseBlocks(markdown) }
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy((8 * fontSizeMultiplier).dp)) {
         blocks.forEach { block ->
             when (block) {
                 is MarkdownBlock.Text -> {
-                    val styledText = remember(block.lines) { parseMarkdownText(block.lines.joinToString("\n")) }
+                    val styledText = remember(block.lines, fontSizeMultiplier) { 
+                        parseMarkdownText(block.lines.joinToString("\n"), fontSizeMultiplier) 
+                    }
                     Text(
                             text = styledText,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = MaterialTheme.typography.bodyMedium.fontSize * fontSizeMultiplier,
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * fontSizeMultiplier
+                            ),
                             color = color
                     )
                 }
@@ -125,15 +131,18 @@ fun MarkdownText(
                         Text(
                                 text = block.content,
                                 fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.padding(8.dp),
-                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding((8 * fontSizeMultiplier).dp),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = MaterialTheme.typography.bodySmall.fontSize * fontSizeMultiplier,
+                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight * fontSizeMultiplier
+                                ),
                                 color = color
                         )
                     }
                 }
                 is MarkdownBlock.HorizontalRule -> {
                     HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
+                            modifier = Modifier.padding(vertical = (8 * fontSizeMultiplier).dp),
                             color = Color.Gray.copy(alpha = 0.5f)
                     )
                 }
@@ -151,15 +160,20 @@ fun MarkdownText(
                                             .background(if (rowIndex == 0) Color.LightGray.copy(alpha = 0.2f) else Color.Transparent)
                             ) {
                                 row.forEachIndexed { cellIndex, cell ->
-                                    val cellText = remember(cell) { parseMarkdownText(cell) }
+                                    val cellText = remember(cell, fontSizeMultiplier) { 
+                                        parseMarkdownText(cell, fontSizeMultiplier) 
+                                    }
                                     Box(
                                             modifier = Modifier
                                                     .weight(1f)
-                                                    .padding(8.dp)
+                                                    .padding((8 * fontSizeMultiplier).dp)
                                     ) {
                                         Text(
                                                 text = cellText,
-                                                style = MaterialTheme.typography.bodyMedium,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontSize = MaterialTheme.typography.bodyMedium.fontSize * fontSizeMultiplier,
+                                                    lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * fontSizeMultiplier
+                                                ),
                                                 fontWeight = if (rowIndex == 0) FontWeight.Bold else FontWeight.Normal,
                                                 color = color
                                         )
@@ -185,7 +199,7 @@ fun MarkdownText(
     }
 }
 
-fun parseMarkdownText(text: String): AnnotatedString {
+fun parseMarkdownText(text: String, fontSizeMultiplier: Float = 1f): AnnotatedString {
     return buildAnnotatedString {
         val lines = text.split("\n")
         lines.forEachIndexed { index, line ->
@@ -205,7 +219,7 @@ fun parseMarkdownText(text: String): AnnotatedString {
                     2 -> 20.sp
                     3 -> 18.sp
                     else -> 16.sp
-                }
+                } * fontSizeMultiplier
                 val fontWeight = FontWeight.Bold
 
                 withStyle(SpanStyle(fontSize = fontSize, fontWeight = fontWeight)) {
@@ -218,13 +232,14 @@ fun parseMarkdownText(text: String): AnnotatedString {
                 append("• ")
                 appendMarkdownLine(currentLine)
             }
-            // Code Blocks (Basic single line detection for indent/backticks at start - fallback if not caught by block parser)
+            // Code Blocks
             else if (currentLine.startsWith("```") || currentLine.startsWith("    ")) {
                 currentLine = currentLine.removePrefix("```").removeSuffix("```").trim()
                 withStyle(
                         SpanStyle(
                                 fontFamily = FontFamily.Monospace,
-                                background = Color.LightGray.copy(alpha = 0.3f)
+                                background = Color.LightGray.copy(alpha = 0.3f),
+                                fontSize = 14.sp * fontSizeMultiplier
                         )
                 ) { append(currentLine) }
             }
